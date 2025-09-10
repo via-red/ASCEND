@@ -1,0 +1,80 @@
+# ASCEND基础配置示例
+version: "1.0.0"
+framework: "ascend"
+
+# 智能体配置
+agent:
+  type: "ppo_agent"
+  config:
+    learning_rate: 0.0003
+    batch_size: 64
+    n_steps: 2048
+    ent_coef: 0.01
+    vf_coef: 0.5
+    max_grad_norm: 0.5
+    clip_range: 0.2
+
+# 环境配置
+environment:
+  type: "cartpole_env"
+  config:
+    env_id: "CartPole-v1"
+    max_episode_steps: 500
+    render_mode: "rgb_array"
+
+# 训练配置
+training:
+  total_timesteps: 100000
+  learning_starts: 10000
+  train_freq: 4
+  gradient_steps: 1
+  buffer_size: 100000
+  gamma: 0.99
+  target_update_interval: 1000
+  eval_freq: 10000
+  n_eval_episodes: 5
+  save_freq: 50000
+  log_dir: "./logs/basic_example"
+  checkpoint_dir: "./checkpoints/basic_example"
+
+# 模型配置
+models:
+  policy:
+    type: "mlp_policy"
+    config:
+      net_arch:
+        pi: [64, 64]
+        vf: [64, 64]
+      activation_fn: "relu"
+      ortho_init: true
+
+# 奖励配置
+rewards:
+  main:
+    type: "sparse_reward"
+    config:
+      goal_reward: 1.0
+      step_penalty: -0.01
+      failure_penalty: -1.0
+
+# 插件配置
+plugins:
+  - "ascend_rl_sb3"
+  - "ascend_env_gym"
+  - "ascend_monitor_tb"
+
+# 监控配置
+monitoring:
+  tensorboard:
+    enabled: true
+    log_dir: "./logs/tensorboard"
+    update_freq: 1000
+  console:
+    enabled: true
+    progress_bar: true
+    verbose: 1
+
+# 环境变量示例（可选）
+env_vars:
+  OPENAI_API_KEY: optional
+  WANDB_API_KEY: optional
