@@ -3,10 +3,18 @@ ASCEND核心类型定义
 提供框架中使用的基础数据类型和类型别名
 """
 
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any, Dict, List, Tuple, Union, Optional, Callable
 from typing_extensions import TypeAlias
 from dataclasses import dataclass
 from enum import Enum
+
+# 策略类型定义
+class PolicyType(Enum):
+    """策略类型枚举"""
+    RANDOM = "random"  # 随机策略
+    DETERMINISTIC = "deterministic"  # 确定性策略
+    STOCHASTIC = "stochastic"  # 随机性策略
+    HYBRID = "hybrid"  # 混合策略
 
 # 基础类型别名
 State: TypeAlias = Dict[str, Any]

@@ -18,7 +18,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ..core.protocols import IAgent, IEnvironment, IPolicy, State, Action, Experience
 from ..core.types import PolicyType
-from .base import IPlugin
+from .base import BasePlugin, IPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +168,7 @@ class SB3PolicyWrapper(IPolicy):
         """
         self.model = self.model.load(path)
 
-class SB3Plugin(IPlugin):
+class SB3Plugin(BasePlugin):
     """Stable-Baselines3 插件实现
     
     提供与 SB3 库的集成，支持常用的强化学习算法。
@@ -182,8 +182,11 @@ class SB3Plugin(IPlugin):
     
     def __init__(self) -> None:
         """初始化插件"""
-        self.name = "sb3"
-        self.version = "0.1.0"
+        super().__init__(
+            name="rl_sb3",
+            version="0.1.0",
+            description="Integrates Stable Baselines3 for RL agents and policies."
+        )
         self.config: Optional[SB3PluginConfig] = None
         self.model = None
     
@@ -193,8 +196,18 @@ class SB3Plugin(IPlugin):
         Args:
             registry: 插件注册表
         """
-        registry.register_plugin(self.name, self)
-        logger.info(f"Registered SB3 plugin v{self.version}")
+        try:
+            import stable_baselines3
+            registry.register_plugin(self.name, self)
+            logger.info(f"Registered plugin: {self.name} v{self.version}")
+            
+            # 注册算法组件
+            for algo_name, algo_cls in SUPPORTED_ALGORITHMS.items():
+                registry.register_agent(f"{algo_name}_sb3", self.create_agent)
+                logger.info(f"Registered algorithm: {algo_name}")
+        except ImportError:
+            logger.warning("Failed to register SB3 plugin: stable_baselines3 not installed. Please run 'pip install stable-baselines3'")
+            raise
     
     def configure(self, config: Dict[str, Any]) -> None:
         """配置插件
@@ -202,8 +215,12 @@ class SB3Plugin(IPlugin):
         Args:
             config: 配置参数
         """
-        self.config = SB3PluginConfig(**config)
-        logger.info(f"Configured SB3 plugin with algorithm: {self.config.algorithm}")
+        try:
+            self.config = SB3PluginConfig(**config)
+            logger.info(f"Configured SB3 plugin with algorithm: {self.config.algorithm}")
+        except Exception as e:
+            logger.error(f"Failed to configure SB3 plugin: {e}")
+            raise
     
     def create_agent(self, env: IEnvironment) -> IAgent:
         """创建智能体
@@ -245,7 +262,21 @@ class SB3Plugin(IPlugin):
         
         # 返回智能体
         from ..core.agents import BaseAgent
-        return BaseAgent(
+
+        class SB3Agent(BaseAgent):
+            """SB3代理类
+            """
+            def process_observation(self, observation, **kwargs):
+                """处理环境观察
+                """
+                return observation
+            
+            def explain(self, **kwargs):
+                """解释代理的决策
+                """
+                return {"explanation": "SB3代理使用神经网络策略进行决策"}
+        
+        return SB3Agent(
             name=f"sb3_{self.config.algorithm}_agent",
             policy=policy,
             config=self.config.dict()
@@ -294,60 +325,4 @@ from ascend.plugins.base import BasePlugin
 from ascend.core.protocols import IPluginRegistry
 from ascend.core.exceptions import PluginError
 
-# --- Pydantic 配置模型 ---
 
-class SB3PolicyConfig(BaseModel):
-    """SB3 策略网络配置"""
-    net_arch: List[int] = Field(default=[64, 64], description="网络结构")
-    activation_fn: str = Field(default="relu", description="激活函数")
-
-class SB3AgentConfig(BaseModel):
-    """SB3 Agent (PPO) 的配置模型"""
-    learning_rate: Annotated[float, Field(gt=0, le=1)] = Field(default=0.0003, description="学习率")
-    n_steps: PositiveInt = Field(default=2048, description="每次更新前运行的步数")
-    batch_size: PositiveInt = Field(default=64, description="小批量大小")
-    n_epochs: PositiveInt = Field(default=10, description="优化代理目标的轮数")
-    gamma: Annotated[float, Field(gt=0, lt=1)] = Field(default=0.99, description="折扣因子")
-    gae_lambda: Annotated[float, Field(gt=0, lt=1)] = Field(default=0.95, description="GAE lambda 参数")
-    clip_range: Annotated[float, Field(gt=0)] = Field(default=0.2, description="PPO 裁剪范围")
-    ent_coef: Annotated[float, Field(ge=0)] = Field(default=0.0, description="熵系数")
-    vf_coef: Annotated[float, Field(ge=0)] = Field(default=0.5, description="价值函数系数")
-    max_grad_norm: Annotated[float, Field(gt=0)] = Field(default=0.5, description="梯度裁剪最大范数")
-    policy_kwargs: Optional[SB3PolicyConfig] = Field(default=None, description="策略网络参数")
-
-# --- 插件实现 ---
-
-class SB3Plugin(BasePlugin):
-    """
-    集成 Stable Baselines3 的插件。
-    提供基于 SB3 的 Agent 和 Policy 实现。
-    """
-    def __init__(self):
-        super().__init__(
-            name="ascend_rl_sb3",
-            version="0.1.0",
-            description="Integrates Stable Baselines3 for RL agents and policies."
-        )
-
-    def get_config_schema(self) -> Optional[Type[BaseModel]]:
-        """返回此插件特定组件的 Pydantic 配置模型。"""
-        # 在实际应用中，这里可以根据 agent.type 返回不同的模型
-        # 为简化示例，我们直接返回 PPO 的配置模型
-        return SB3AgentConfig
-
-    def register(self, registry: IPluginRegistry) -> None:
-        """向框架注册 SB3 提供的组件。"""
-        try:
-            from stable_baselines3 import PPO
-            # 伪代码：实际应注册一个包装类，使其符合 IAgent 协议
-            # registry.register_agent("ppo_sb3", PPO) 
-        except ImportError:
-            raise PluginError(
-                "Stable Baselines3 is not installed. Please run 'pip install ascend-framework[rl]'",
-                self.name
-            )
-        except Exception as e:
-            raise PluginError(f"Failed to register components: {e}", self.name)
-
-    def _get_provided_components(self) -> List[str]:
-        return ["agent:ppo_sb3"]

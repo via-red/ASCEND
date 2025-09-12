@@ -19,7 +19,7 @@ from ..core.exceptions import ConfigError
 
 logger = logging.getLogger(__name__)
 
-class ConfigLoader:
+class BaseConfigLoader:
     """配置加载器
     
     负责加载、解析和验证配置文件。
@@ -82,8 +82,10 @@ class ConfigLoader:
         """
         # 查找配置文件
         config_path = self._find_config_file(config_file)
+        logger.debug(f"Searching for config file: {config_file}")
+        logger.debug(f"Search paths: {self.config_paths}")
         if not config_path:
-            raise ConfigError("Config file not found")
+            raise ConfigError(f"Config file {config_file} not found in search paths: {self.config_paths}")
         
         try:
             # 加载YAML文件
@@ -119,15 +121,23 @@ class ConfigLoader:
             配置文件路径，如果未找到则返回None
         """
         if config_file:
+            # 首先尝试将config_file作为绝对路径
             path = Path(config_file)
-            return path if path.exists() else None
-        
-        # 在搜索路径中查找默认配置文件
-        for path in self.config_paths:
-            for name in ["config.yaml", "config.yml"]:
-                config_path = Path(path) / name
-                if config_path.exists():
-                    return config_path
+            if path.exists():
+                return path
+                
+            # 然后在每个搜索路径中查找
+            for search_path in self.config_paths:
+                path = Path(search_path) / config_file
+                if path.exists():
+                    return path
+        else:
+            # 在搜索路径中查找默认配置文件
+            for path in self.config_paths:
+                for name in ["config.yaml", "config.yml"]:
+                    config_path = Path(path) / name
+                    if config_path.exists():
+                        return config_path
         
         return None
     
@@ -228,18 +238,21 @@ from ascend.core.types import Config
 from .parser import ConfigParser, default_parser
 from .validator import ConfigValidator, default_validator
 
-class ConfigLoader:
+class ConfigLoader(BaseConfigLoader):
     """配置加载器类"""
     
-    def __init__(self, parser: Optional[ConfigParser] = None, 
+    def __init__(self, config_paths: Optional[List[str]] = None, 
+                 parser: Optional[ConfigParser] = None,
                  validator: Optional[ConfigValidator] = None):
         """
         初始化配置加载器
         
         Args:
+            config_paths: 配置文件搜索路径列表
             parser: 配置解析器实例（可选）
             validator: 配置验证器实例（可选）
         """
+        super().__init__(config_paths=config_paths)
         self.parser = parser or default_parser
         self.validator = validator or default_validator
         self._config_cache: Dict[str, Config] = {}

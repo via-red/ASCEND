@@ -21,6 +21,24 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from ..plugins.base import IPluginRegistry  # 仅用于类型检查
 
+class IPluginRegistry(Protocol):
+    """插件注册表协议
+    
+    定义插件管理器必须实现的接口。
+    """
+    
+    def register_plugin(self, plugin_class: Type[Any]) -> None:
+        """注册插件类"""
+        ...
+        
+    def get_plugin(self, plugin_id: str) -> Any:
+        """获取插件实例"""
+        ...
+        
+    def list_plugins(self) -> List[str]:
+        """列出已注册的插件"""
+        ...
+
 # 基础类型定义
 # 状态类型 - 使用字典表示环境或智能体的状态信息
 State: TypeAlias = Dict[str, Any]

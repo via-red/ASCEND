@@ -5,13 +5,20 @@ ASCEND插件模块
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from .base import BasePlugin, PluginRegistry
-from .manager import PluginManager, default_manager
-from .discovery import PluginDiscovery, default_discovery, discover_and_load_plugins, auto_discover_plugins
-
+# 导入协议和异常
 from ascend.core.protocols import IPlugin
 from ascend.core.exceptions import PluginError, PluginNotFoundError, PluginLoadError
 from ascend.core.types import Config
+
+# 先导入基础类
+from .base import BasePlugin, PluginRegistry
+
+# 导入所有可用的插件
+from .sb3 import SB3PluginConfig, SB3Plugin
+
+# 最后导入管理器相关类
+from .discovery import PluginDiscovery, default_discovery, discover_and_load_plugins, auto_discover_plugins
+from .manager import PluginManager, default_manager
 
 __all__ = [
     # 基础类

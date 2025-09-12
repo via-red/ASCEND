@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 def setup():
     """初始化框架组件"""
     # 加载配置
-    config_loader = ConfigLoader()
+    config_loader = ConfigLoader([str(Path(__file__).parent)])
     config = config_loader.load_config("config.yaml")
     logger.info("Loaded configuration")
 
@@ -48,8 +48,8 @@ def setup():
     logger.info(f"Discovered plugins: {list(discovered.keys())}")
 
     # 加载和初始化 SB3 插件
-    sb3_plugin = plugin_manager.load_plugin("sb3")
-    plugin_manager.initialize_plugin("sb3", config.get("sb3", {}))
+    sb3_plugin = plugin_manager.load_plugin("rl_sb3")
+    plugin_manager.initialize_plugin("rl_sb3", config.get("rl_sb3", {}))
     logger.info("Initialized SB3 plugin")
 
     return config, plugin_manager, sb3_plugin
@@ -76,9 +76,9 @@ class SimpleEnvironment:
         self.reset()
         
         # 定义动作空间和观察空间
-        import gym
+        import gymnasium as gym
         self.action_space = gym.spaces.Discrete(2)  # 0: 减少, 1: 增加
-        self.observation_space = gym.spaces.Box(low=0, high=100, shape=(1,))
+        self.observation_space = gym.spaces.Box(low=0, high=100, shape=(1,), dtype=float)
         
         logger.info(
             f"Initialized environment with target={self.target_value}, "

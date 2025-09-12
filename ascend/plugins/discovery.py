@@ -12,36 +12,19 @@ import importlib.util
 import logging
 import pkg_resources
 import sys
-from typing import Dict, List, Optional, Set, Any, Tuple, Type
+from typing import Dict, List, Optional, Set, Any, Tuple, Type, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .manager import PluginManager
 from pathlib import Path
 from dataclasses import dataclass
 from pydantic import BaseModel, Field, ValidationError
 
 from .base import IPlugin
+from .types import PluginInfo
 from ..core.exceptions import PluginError
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class PluginInfo:
-    """插件信息数据类
-    
-    Attributes:
-        name: 插件名称
-        version: 插件版本
-        description: 插件描述
-        module_path: 模块路径
-        dependencies: 依赖的其他插件
-        plugin_class: 插件类型
-        config_schema: 配置模式
-    """
-    name: str
-    version: str
-    description: str
-    module_path: str
-    dependencies: List[str]
-    plugin_class: Type[IPlugin]
-    config_schema: Optional[Type[BaseModel]] = None
 
 class PluginDiscovery:
     """插件发现器
@@ -61,9 +44,39 @@ class PluginDiscovery:
             plugin_paths: 插件搜索路径列表
         """
         self.plugin_paths = plugin_paths or []
-        self.discovered_plugins: Dict[str, PluginInfo] = {}
-        self.loaded_plugins: Dict[str, IPlugin] = {}
+        self._discovered_plugins: Dict[str, PluginInfo] = {}
+        self._loaded_plugins: Dict[str, IPlugin] = {}
         self._add_default_paths()
+
+    @property
+    def discovered_plugins(self) -> Dict[str, PluginInfo]:
+        """已发现的插件信息"""
+        return self._discovered_plugins
+    
+    @property
+    def loaded_plugins(self) -> Dict[str, IPlugin]:
+        """已加载的插件实例"""
+        return self._loaded_plugins
+
+    def _register_builtin_plugins(self) -> None:
+        """注册内置插件"""
+        from . import sb3
+        
+        # 创建SB3插件实例
+        logger.info("Creating SB3 plugin instance...")
+        plugin = sb3.SB3Plugin()
+        logger.info(f"Created plugin: name={plugin.name}, version={plugin.version}")
+        
+        self._discovered_plugins[plugin.name] = PluginInfo(
+            name=plugin.name,
+            version=plugin.version,
+            description=plugin.description,
+            module_path="ascend.plugins.sb3",
+            dependencies=[],
+            plugin_class=sb3.SB3Plugin,
+            config_schema=plugin.get_config_schema()
+        )
+        logger.info(f"Registered builtin plugin: {plugin.name}")
         
     def _add_default_paths(self) -> None:
         """添加默认的插件搜索路径"""
@@ -82,11 +95,16 @@ class PluginDiscovery:
         Returns:
             已发现的插件信息字典
         """
-        self.discovered_plugins.clear()
+        logger.info("Starting plugin discovery...")
+        
+        # 注册内置插件
+        self._register_builtin_plugins()
+        logger.info(f"After registering builtin plugins: {list(self._discovered_plugins.keys())}")
         
         # 扫描所有插件路径
         for path in self.plugin_paths:
             plugin_path = Path(path)
+            logger.info(f"Scanning plugin path: {plugin_path}")
             if not plugin_path.exists():
                 continue
                 
@@ -168,10 +186,10 @@ class PluginDiscovery:
         Raises:
             PluginError: 当插件加载失败时
         """
-        if name in self.loaded_plugins:
-            return self.loaded_plugins[name]
+        if name in self._loaded_plugins:
+            return self._loaded_plugins[name]
             
-        plugin_info = self.discovered_plugins.get(name)
+        plugin_info = self._discovered_plugins.get(name)
         if not plugin_info:
             raise PluginError(f"Plugin {name} not found")
             
@@ -230,7 +248,7 @@ class PluginDiscovery:
 from ascend.core.exceptions import PluginError, PluginNotFoundError
 from ascend.core.types import Config
 from .base import BasePlugin
-from .manager import PluginManager
+# Removed circular import
 
 class PluginDiscovery:
     """插件发现类"""
@@ -504,7 +522,7 @@ default_discovery = PluginDiscovery()
 
 def discover_and_load_plugins(plugin_names: List[str], 
                              configs: Optional[Dict[str, Config]] = None,
-                             manager: Optional[PluginManager] = None) -> List[BasePlugin]:
+                             manager: Optional[Any] = None) -> List[BasePlugin]:
     """发现并加载插件（便捷函数）
     
     Args:
@@ -534,7 +552,7 @@ def discover_and_load_plugins(plugin_names: List[str],
 
 
 def auto_discover_plugins(config: Config, 
-                         manager: Optional[PluginManager] = None) -> List[BasePlugin]:
+                         manager: Optional[Any] = None) -> List[BasePlugin]:
     """自动发现并加载配置中指定的插件
     
     Args:

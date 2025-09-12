@@ -5,11 +5,16 @@ framework: "ascend"
 # 环境配置
 environment:
   name: "SimpleEnvironment"
+  type: "cartpole_env"
   max_steps: 100
   target_value: 75
+  config:
+    env_id: "CartPole-v1"
+    max_episode_steps: 500
+    render_mode: "rgb_array"
 
 # SB3插件配置
-sb3:
+rl_sb3:
   algorithm: "ppo"  # 使用PPO算法
   policy: "MlpPolicy"  # 使用多层感知机策略
   learning_rate: 0.0003
@@ -17,6 +22,10 @@ sb3:
   n_steps: 2048
   device: "auto"
   verbose: 1
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  clip_range: 0.2
 
 # 训练配置
 training:
@@ -24,30 +33,14 @@ training:
   eval_episodes: 10
   save_path: "trained_agent"
   log_interval: 100
+  total_timesteps: 100000
+  learning_starts: 10000
+  train_freq: 4
 
 # 日志配置
 logging:
   level: "INFO"
   file: "training.log"
-    n_steps: 2048
-    ent_coef: 0.01
-    vf_coef: 0.5
-    max_grad_norm: 0.5
-    clip_range: 0.2
-
-# 环境配置
-environment:
-  type: "cartpole_env"
-  config:
-    env_id: "CartPole-v1"
-    max_episode_steps: 500
-    render_mode: "rgb_array"
-
-# 训练配置
-training:
-  total_timesteps: 100000
-  learning_starts: 10000
-  train_freq: 4
   gradient_steps: 1
   buffer_size: 100000
   gamma: 0.99
