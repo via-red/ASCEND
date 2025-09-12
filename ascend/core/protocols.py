@@ -121,9 +121,9 @@ class ICognition(Protocol):
         ...
 
 class IFeatureExtractor(Protocol):
-    """特征提取器协议 - 负责从原始数据中提取特征"""
+    """特征提取器协议 - 负责从原始数据中提取特征和状态表示"""
     
-    def extract(self, raw_data: Any) -> Feature:
+    def extract_features(self, raw_data: Any) -> Feature:
         """提取特征
         
         Args:
@@ -131,6 +131,17 @@ class IFeatureExtractor(Protocol):
             
         Returns:
             提取的特征
+        """
+        ...
+    
+    def extract_state(self, raw_data: Any) -> State:
+        """提取状态表示
+        
+        Args:
+            raw_data: 原始数据
+            
+        Returns:
+            状态表示
         """
         ...
     
@@ -422,28 +433,6 @@ class IRewardFunction(Protocol):
         """重置奖励函数状态"""
         ...
 
-
-class IFeatureExtractor(Protocol):
-    """特征提取协议 - 将原始数据转换为状态表示"""
-    
-    def extract(self, raw_data: Any) -> State:
-        """提取特征
-        
-        Args:
-            raw_data: 原始数据
-            
-        Returns:
-            状态表示
-        """
-        ...
-    
-    def get_feature_dim(self) -> int:
-        """获取特征维度
-        
-        Returns:
-            特征维度
-        """
-        ...
 
 
 class IPlugin(Protocol):
