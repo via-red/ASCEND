@@ -20,9 +20,10 @@ from pathlib import Path
 from dataclasses import dataclass
 from pydantic import BaseModel, Field, ValidationError
 
-from .base import IPlugin
+from .base import IPlugin, BasePlugin
 from .types import PluginInfo
 from ..core.exceptions import PluginError
+from ..core.types import Config
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class PluginDiscovery:
         self.plugin_paths = plugin_paths or []
         self._discovered_plugins: Dict[str, PluginInfo] = {}
         self._loaded_plugins: Dict[str, IPlugin] = {}
+        self._dependency_graph: Dict[str, Set[str]] = {}
         self._add_default_paths()
 
     @property
@@ -60,23 +62,23 @@ class PluginDiscovery:
 
     def _register_builtin_plugins(self) -> None:
         """注册内置插件"""
-        from . import sb3
+        from .base import get_builtin_plugins
         
-        # 创建SB3插件实例
-        logger.info("Creating SB3 plugin instance...")
-        plugin = sb3.SB3Plugin()
-        logger.info(f"Created plugin: name={plugin.name}, version={plugin.version}")
+        builtin_plugins = get_builtin_plugins()
         
-        self._discovered_plugins[plugin.name] = PluginInfo(
-            name=plugin.name,
-            version=plugin.version,
-            description=plugin.description,
-            module_path="ascend.plugins.sb3",
-            dependencies=[],
-            plugin_class=sb3.SB3Plugin,
-            config_schema=plugin.get_config_schema()
-        )
-        logger.info(f"Registered builtin plugin: {plugin.name}")
+        for plugin_name, plugin_class in builtin_plugins.items():
+            # 创建插件实例并获取信息
+            plugin_instance = plugin_class()
+            self._discovered_plugins[plugin_name] = PluginInfo(
+                name=plugin_instance.name,
+                version=plugin_instance.version,
+                description=plugin_instance.description,
+                module_path=plugin_class.__module__,
+                dependencies=plugin_instance.get_metadata().get('dependencies', []),
+                plugin_class=plugin_class,
+                config_schema=plugin_instance.get_config_schema()
+            )
+            logger.info(f"Registered builtin plugin: {plugin_name}")
         
     def _add_default_paths(self) -> None:
         """添加默认的插件搜索路径"""
@@ -120,6 +122,9 @@ class PluginDiscovery:
                         logger.info(f"Discovered plugin: {plugin_info.name} v{plugin_info.version}")
                 except Exception as e:
                     logger.warning(f"Failed to load plugin from {file_path}: {e}")
+        
+        # 构建依赖图
+        self._build_dependency_graph()
         
         return self.discovered_plugins
     
@@ -244,95 +249,13 @@ class PluginDiscovery:
             已加载的插件名称列表
         """
         return list(self.loaded_plugins.keys())
-
-from ascend.core.exceptions import PluginError, PluginNotFoundError
-from ascend.core.types import Config
-from .base import BasePlugin
-# Removed circular import
-
-class PluginDiscovery:
-    """插件发现类"""
     
-    def __init__(self, plugin_dirs: Optional[List[str]] = None):
-        """
-        初始化插件发现器
-        
-        Args:
-            plugin_dirs: 额外的插件目录列表
-        """
-        self.plugin_dirs = plugin_dirs or []
-        self._discovered_plugins: Dict[str, Any] = {}
-        self._dependency_graph: Dict[str, Set[str]] = {}
-    
-    def discover_plugins(self, refresh: bool = False) -> Dict[str, Any]:
-        """发现所有可用插件
-        
-        Args:
-            refresh: 是否刷新缓存
-            
-        Returns:
-            插件信息字典
-        """
-        if not refresh and self._discovered_plugins:
-            return self._discovered_plugins.copy()
-        
-        plugins = {}
-        
-        # 1. 通过entry points发现插件
-        plugins.update(self._discover_via_entry_points())
-        
-        # 2. 通过文件系统发现插件
-        plugins.update(self._discover_via_filesystem())
-        
-        # 3. 构建依赖图
-        self._build_dependency_graph(plugins)
-        
-        self._discovered_plugins = plugins
-        return plugins.copy()
-    
-    def _discover_via_entry_points(self) -> Dict[str, Any]:
-        """通过Python entry points发现插件"""
-        plugins = {}
-        
-        try:
-            for entry_point in pkg_resources.iter_entry_points('ascend.plugins'):
-                try:
-                    plugin_class = entry_point.load()
-                    if issubclass(plugin_class, BasePlugin):
-                        plugin_instance = plugin_class()
-                        plugins[entry_point.name] = {
-                            'type': 'entry_point',
-                            'entry_point': entry_point,
-                            'class': plugin_class,
-                            'instance': plugin_instance,
-                            'metadata': plugin_instance.get_metadata()
-                        }
-                except Exception as e:
-                    # 忽略加载失败的插件
-                    print(f"Warning: Failed to load plugin {entry_point.name}: {e}")
-                    continue
-        except Exception as e:
-            print(f"Warning: Failed to discover plugins via entry points: {e}")
-        
-        return plugins
-    
-    def _discover_via_filesystem(self) -> Dict[str, Any]:
-        """通过文件系统发现插件"""
-        plugins = {}
-        
-        # 这里可以实现自定义的文件系统插件发现逻辑
-        # 例如：扫描特定目录下的Python模块
-        
-        return plugins
-    
-    def _build_dependency_graph(self, plugins: Dict[str, Any]) -> None:
+    def _build_dependency_graph(self) -> None:
         """构建插件依赖图"""
         self._dependency_graph.clear()
         
-        for plugin_name, plugin_info in plugins.items():
-            metadata = plugin_info['metadata']
-            requires = set(metadata.get('requires', []))
-            self._dependency_graph[plugin_name] = requires
+        for name, info in self._discovered_plugins.items():
+            self._dependency_graph[name] = set(info.dependencies)
     
     def resolve_dependencies(self, plugin_names: List[str]) -> List[str]:
         """解析插件依赖关系
@@ -347,7 +270,8 @@ class PluginDiscovery:
             PluginError: 依赖解析失败
         """
         # 确保插件信息已发现
-        self.discover_plugins()
+        if not self._discovered_plugins:
+            self.discover_plugins()
         
         # 收集所有需要的插件（包括依赖）
         all_plugins = set(plugin_names)
@@ -420,7 +344,8 @@ class PluginDiscovery:
         Returns:
             (是否兼容, 不兼容的插件列表)
         """
-        self.discover_plugins()
+        if not self._discovered_plugins:
+            self.discover_plugins()
         
         incompatible = []
         
@@ -429,95 +354,17 @@ class PluginDiscovery:
                 incompatible.append(plugin_name)
                 continue
             
-            plugin_info = self._discovered_plugins[plugin_name]
-            metadata = plugin_info['metadata']
-            
-            # 检查框架版本兼容性
-            compatible_versions = metadata.get('compatible_with', [])
-            if not self._is_version_compatible(compatible_versions):
-                incompatible.append(plugin_name)
+            # 这里可以添加更复杂的兼容性检查逻辑
+            # 目前简化实现：假设所有已发现的插件都兼容
+            pass
         
         return (len(incompatible) == 0, incompatible)
-    
-    def _is_version_compatible(self, compatible_versions: List[str]) -> bool:
-        """检查版本兼容性
-        
-        Args:
-            compatible_versions: 兼容的版本列表
-            
-        Returns:
-            是否兼容
-        """
-        # 这里实现版本兼容性检查逻辑
-        # 简化实现：假设所有版本都兼容
-        return True
-    
-    def get_plugin_info(self, plugin_name: str) -> Optional[Dict[str, Any]]:
-        """获取插件详细信息
-        
-        Args:
-            plugin_name: 插件名称
-            
-        Returns:
-            插件信息字典或None
-        """
-        self.discover_plugins()
-        return self._discovered_plugins.get(plugin_name)
-    
-    def find_plugins_by_type(self, component_type: str) -> List[str]:
-        """根据组件类型查找插件
-        
-        Args:
-            component_type: 组件类型
-            
-        Returns:
-            提供该类型组件的插件名称列表
-        """
-        self.discover_plugins()
-        
-        matching_plugins = []
-        
-        for plugin_name, plugin_info in self._discovered_plugins.items():
-            metadata = plugin_info['metadata']
-            provides = metadata.get('provides', [])
-            
-            if component_type in provides:
-                matching_plugins.append(plugin_name)
-        
-        return matching_plugins
-    
-    def find_plugins_by_capability(self, capability: str) -> List[str]:
-        """根据能力查找插件
-        
-        Args:
-            capability: 能力关键词
-            
-        Returns:
-            提供该能力的插件名称列表
-        """
-        self.discover_plugins()
-        
-        matching_plugins = []
-        
-        for plugin_name, plugin_info in self._discovered_plugins.items():
-            metadata = plugin_info['metadata']
-            description = metadata.get('description', '').lower()
-            provides = [p.lower() for p in metadata.get('provides', [])]
-            
-            if (capability.lower() in description or
-                capability.lower() in provides):
-                matching_plugins.append(plugin_name)
-        
-        return matching_plugins
     
     def clear_cache(self) -> None:
         """清除发现缓存"""
         self._discovered_plugins.clear()
         self._dependency_graph.clear()
 
-
-# 创建默认插件发现器实例
-default_discovery = PluginDiscovery()
 
 
 def discover_and_load_plugins(plugin_names: List[str], 
@@ -551,7 +398,13 @@ def discover_and_load_plugins(plugin_names: List[str],
     return manager.load_plugins(resolved_plugins, configs)
 
 
-def auto_discover_plugins(config: Config, 
+# 创建默认插件发现器实例
+default_discovery = PluginDiscovery()
+
+
+
+
+def auto_discover_plugins(config: Config,
                          manager: Optional[Any] = None) -> List[BasePlugin]:
     """自动发现并加载配置中指定的插件
     

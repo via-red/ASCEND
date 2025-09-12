@@ -408,3 +408,31 @@ class PluginRegistry:
             插件数量
         """
         return len(self._plugins)
+
+
+# 内置插件注册表
+_builtin_plugins_registry: Dict[str, Type['BasePlugin']] = {}
+
+
+def register_builtin_plugin(plugin_class: Type['BasePlugin']) -> Type['BasePlugin']:
+    """装饰器：注册内置插件类
+    
+    Args:
+        plugin_class: 插件类
+        
+    Returns:
+        装饰后的插件类
+    """
+    # 创建实例以获取元数据
+    plugin_instance = plugin_class()
+    _builtin_plugins_registry[plugin_instance.name] = plugin_class
+    return plugin_class
+
+
+def get_builtin_plugins() -> Dict[str, Type['BasePlugin']]:
+    """获取所有已注册的内置插件
+    
+    Returns:
+        内置插件类字典
+    """
+    return _builtin_plugins_registry.copy()

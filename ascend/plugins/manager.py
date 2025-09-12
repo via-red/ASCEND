@@ -48,31 +48,12 @@ class BasePluginManager:
         
     def discover_plugins(self) -> Dict[str, PluginInfo]:
         """Discover available plugins
-        
+
         Returns:
             Dictionary of plugin information
         """
-        # 先调用discovery的discover_plugins确保内置插件被注册
-        self.discovery.discover_plugins()
-        
-        # 先调用discovery的discover_plugins来注册内置插件
-        self.discovery.discover_plugins()
-        
-        # 直接注册内置插件
-        from .sb3 import SB3Plugin
-        plugin = SB3Plugin()
-        self.discovery._discovered_plugins[plugin.name] = PluginInfo(
-            name=plugin.name,
-            version=plugin.version,
-            description=plugin.description,
-            module_path="ascend.plugins.sb3",
-            dependencies=[],
-            plugin_class=SB3Plugin,
-            config_schema=plugin.get_config_schema()
-        )
-        
-        # 获取所有已注册的插件
-        discovered = self.discovery._discovered_plugins
+        # 通过discovery机制发现所有插件（包括内置插件）
+        discovered = self.discovery.discover_plugins()
         logger.info(f"Discovered plugins: {list(discovered.keys())}")
         
         # 更新每个插件的状态
