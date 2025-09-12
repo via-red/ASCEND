@@ -1,39 +1,183 @@
 """
 ASCEND核心协议定义
-基于Python Protocol的完全抽象接口设计，支持智能体原生架构
+基于Python Protocol的完全抽象接口设计，支持智能体原生架构。
+
+核心组件:
+- IAgent: 智能体协议，定义决策和学习行为
+- IEnvironment: 环境协议，定义环境交互
+- ICognition: 认知协议，定义高级推理能力
+- ISafetyGuard: 安全防护协议，定义安全边界和限制
+- IKnowledgeBase: 知识库协议，定义知识存储和检索
+- IFeatureExtractor: 特征提取协议，定义特征工程
 """
 
-from typing import Protocol, Any, Dict, List, Tuple, Optional, Union
+from __future__ import annotations
+from typing import Protocol, Any, Dict, List, Tuple, Optional, Union, TYPE_CHECKING, Type
 from typing_extensions import TypeAlias
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from ..plugins.base import IPluginRegistry  # 仅用于类型检查
 
 # 基础类型定义
+# 状态类型 - 使用字典表示环境或智能体的状态信息
 State: TypeAlias = Dict[str, Any]
+
+# 动作类型 - 可以是任意类型，由具体环境定义
 Action: TypeAlias = Any
+
+# 奖励类型 - 使用浮点数表示单步奖励
 Reward: TypeAlias = float
+
+# 信息类型 - 用于传递额外的调试或监控信息
 Info: TypeAlias = Dict[str, Any]
+
+# 知识类型 - 表示结构化的领域知识
 Knowledge: TypeAlias = Dict[str, Any]
+
+# 特征类型 - 表示从原始数据提取的特征
 Feature: TypeAlias = Dict[str, Any]
 
 @dataclass
 class Experience:
-    """经验回放数据类"""
+    """经验回放数据类
+    
+    包含单步交互的完整信息，支持高级特征和知识增强的学习。
+    
+    Attributes:
+        state: 当前状态
+        action: 执行的动作
+        reward: 获得的奖励
+        next_state: 下一个状态
+        done: 是否完成
+        info: 额外信息字典(可选)
+        features: 提取的特征字典(可选)，用于增强学习
+        knowledge: 相关的知识字典(可选)，支持知识型决策
+    """
     state: State
     action: Action
     reward: Reward
     next_state: State
     done: bool
     info: Optional[Info] = None
+    features: Optional[Feature] = None
+    knowledge: Optional[Knowledge] = None
+
+class ICognition(Protocol):
+    """认知层协议 - 负责状态理解、动作生成和决策解释"""
+    
+    def process_state(self, raw_state: Any) -> State:
+        """处理和理解原始状态
+        
+        Args:
+            raw_state: 原始状态数据
+            
+        Returns:
+            处理后的状态表示
+        """
+        ...
+    
+    def generate_actions(self, state: State) -> List[Action]:
+        """生成候选动作
+        
+        Args:
+            state: 当前状态
+            
+        Returns:
+            候选动作列表
+        """
+        ...
+    
+    def explain_decision(self, state: State, action: Action) -> str:
+        """解释决策原因
+        
+        Args:
+            state: 当前状态
+            action: 选择的动作
+            
+        Returns:
+            决策解释
+        """
+        ...
+
+class IFeatureExtractor(Protocol):
+    """特征提取器协议 - 负责从原始数据中提取特征"""
+    
+    def extract(self, raw_data: Any) -> Feature:
+        """提取特征
+        
+        Args:
+            raw_data: 原始数据
+            
+        Returns:
+            提取的特征
+        """
+        ...
+    
+    def get_feature_dim(self) -> int:
+        """获取特征维度
+        
+        Returns:
+            特征维度
+        """
+        ...
+
+class IKnowledgeBase(Protocol):
+    """知识库协议 - 负责知识的存储、查询和更新"""
+    
+    def query(self, context: Dict[str, Any]) -> Knowledge:
+        """查询知识
+        
+        Args:
+            context: 查询上下文
+            
+        Returns:
+            相关知识
+        """
+        ...
+    
+    def update(self, new_knowledge: Knowledge) -> None:
+        """更新知识库
+        
+        Args:
+            new_knowledge: 新知识
+        """
+        ...
+
+class ISafetyGuard(Protocol):
+    """安全护栏协议 - 负责验证动作的安全性"""
+    
+    def validate_action(self, state: State, action: Action) -> bool:
+        """验证动作的安全性
+        
+        Args:
+            state: 当前状态
+            action: 待验证的动作
+            
+        Returns:
+            是否安全
+        """
+        ...
+    
+    def get_constraints(self) -> Dict[str, Any]:
+        """获取约束条件
+        
+        Returns:
+            约束条件
+        """
+        ...
 
 class IAgent(Protocol):
     """智能体协议 - 定义决策和学习行为"""
     
-    def act(self, state: State) -> Action:
+    def act(self, state: State, knowledge: Optional[Knowledge] = None) -> Action:
         """根据当前状态选择动作
         
         Args:
             state: 当前环境状态
+            knowledge: 可选的知识支持
             
         Returns:
             选择的动作
@@ -48,6 +192,29 @@ class IAgent(Protocol):
             
         Returns:
             学习指标字典
+        """
+        ...
+    
+    def process_observation(self, raw_observation: Any) -> State:
+        """处理原始观察数据
+        
+        Args:
+            raw_observation: 原始观察数据
+            
+        Returns:
+            处理后的状态
+        """
+        ...
+    
+    def explain(self, state: State, action: Action) -> str:
+        """解释当前决策
+        
+        Args:
+            state: 当前状态
+            action: 选择的动作
+            
+        Returns:
+            决策解释
         """
         ...
     
@@ -301,6 +468,14 @@ class IPlugin(Protocol):
         
         Returns:
             元数据字典
+        """
+        ...
+
+    def get_config_schema(self) -> Optional[Type[BaseModel]]:
+        """获取插件配置的Pydantic模型（可选）
+        
+        Returns:
+            Pydantic BaseModel类或None
         """
         ...
 

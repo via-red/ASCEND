@@ -1,13 +1,231 @@
 """
 ASCEND插件发现机制
-提供插件的自动发现、加载和依赖解析功能
+提供插件的自动发现、加载和依赖解析功能。支持以下特性：
+- 自动扫描并发现插件
+- 加载插件模块并实例化
+- 管理插件之间的依赖关系
+- 验证插件的兼容性
 """
 
 import importlib
+import importlib.util
+import logging
 import pkg_resources
 import sys
-from typing import Dict, List, Optional, Set, Any, Tuple
+from typing import Dict, List, Optional, Set, Any, Tuple, Type
 from pathlib import Path
+from dataclasses import dataclass
+from pydantic import BaseModel, Field, ValidationError
+
+from .base import IPlugin
+from ..core.exceptions import PluginError
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class PluginInfo:
+    """插件信息数据类
+    
+    Attributes:
+        name: 插件名称
+        version: 插件版本
+        description: 插件描述
+        module_path: 模块路径
+        dependencies: 依赖的其他插件
+        plugin_class: 插件类型
+        config_schema: 配置模式
+    """
+    name: str
+    version: str
+    description: str
+    module_path: str
+    dependencies: List[str]
+    plugin_class: Type[IPlugin]
+    config_schema: Optional[Type[BaseModel]] = None
+
+class PluginDiscovery:
+    """插件发现器
+    
+    负责扫描、发现和加载插件。
+    
+    Attributes:
+        plugin_paths: 插件搜索路径
+        discovered_plugins: 已发现的插件信息
+        loaded_plugins: 已加载的插件实例
+    """
+    
+    def __init__(self, plugin_paths: Optional[List[str]] = None) -> None:
+        """初始化插件发现器
+        
+        Args:
+            plugin_paths: 插件搜索路径列表
+        """
+        self.plugin_paths = plugin_paths or []
+        self.discovered_plugins: Dict[str, PluginInfo] = {}
+        self.loaded_plugins: Dict[str, IPlugin] = {}
+        self._add_default_paths()
+        
+    def _add_default_paths(self) -> None:
+        """添加默认的插件搜索路径"""
+        # 添加当前包的plugins目录
+        current_dir = Path(__file__).parent
+        self.plugin_paths.append(str(current_dir))
+        
+        # 添加用户级的插件目录
+        user_plugins = Path.home() / ".ascend" / "plugins"
+        if user_plugins.exists():
+            self.plugin_paths.append(str(user_plugins))
+    
+    def discover_plugins(self) -> Dict[str, PluginInfo]:
+        """发现所有可用的插件
+        
+        Returns:
+            已发现的插件信息字典
+        """
+        self.discovered_plugins.clear()
+        
+        # 扫描所有插件路径
+        for path in self.plugin_paths:
+            plugin_path = Path(path)
+            if not plugin_path.exists():
+                continue
+                
+            # 扫描路径下的所有Python文件
+            for file_path in plugin_path.glob("*.py"):
+                if file_path.name.startswith("_"):
+                    continue
+                    
+                try:
+                    plugin_info = self._load_plugin_info(file_path)
+                    if plugin_info:
+                        self.discovered_plugins[plugin_info.name] = plugin_info
+                        logger.info(f"Discovered plugin: {plugin_info.name} v{plugin_info.version}")
+                except Exception as e:
+                    logger.warning(f"Failed to load plugin from {file_path}: {e}")
+        
+        return self.discovered_plugins
+    
+    def _load_plugin_info(self, file_path: Path) -> Optional[PluginInfo]:
+        """加载插件信息
+        
+        Args:
+            file_path: 插件文件路径
+            
+        Returns:
+            插件信息，如果不是有效插件则返回None
+        """
+        module_name = file_path.stem
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        if not spec or not spec.loader:
+            return None
+            
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as e:
+            logger.warning(f"Failed to execute module {module_name}: {e}")
+            return None
+        
+        # 查找插件类
+        plugin_class = None
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if (isinstance(attr, type) and 
+                attr != IPlugin and 
+                hasattr(attr, "__bases__") and 
+                any(base.__name__ == "IPlugin" for base in attr.__bases__)):
+                plugin_class = attr
+                break
+        
+        if not plugin_class:
+            return None
+        
+        # 创建临时实例以获取元数据
+        try:
+            temp_instance = plugin_class()
+            return PluginInfo(
+                name=temp_instance.get_name(),
+                version=temp_instance.get_version(),
+                description=temp_instance.get_metadata().get("description", ""),
+                module_path=str(file_path),
+                dependencies=temp_instance.get_metadata().get("dependencies", []),
+                plugin_class=plugin_class,
+                config_schema=temp_instance.get_config_schema()
+            )
+        except Exception as e:
+            logger.warning(f"Failed to instantiate plugin {module_name}: {e}")
+            return None
+    
+    def load_plugin(self, name: str) -> IPlugin:
+        """加载指定的插件
+        
+        Args:
+            name: 插件名称
+            
+        Returns:
+            插件实例
+            
+        Raises:
+            PluginError: 当插件加载失败时
+        """
+        if name in self.loaded_plugins:
+            return self.loaded_plugins[name]
+            
+        plugin_info = self.discovered_plugins.get(name)
+        if not plugin_info:
+            raise PluginError(f"Plugin {name} not found")
+            
+        try:
+            # 确保依赖已加载
+            for dep in plugin_info.dependencies:
+                if dep not in self.loaded_plugins:
+                    self.load_plugin(dep)
+            
+            # 实例化插件
+            plugin = plugin_info.plugin_class()
+            self.loaded_plugins[name] = plugin
+            logger.info(f"Loaded plugin: {name} v{plugin_info.version}")
+            return plugin
+            
+        except Exception as e:
+            raise PluginError(f"Failed to load plugin {name}: {e}")
+    
+    def unload_plugin(self, name: str) -> None:
+        """卸载指定的插件
+        
+        Args:
+            name: 插件名称
+        """
+        if name in self.loaded_plugins:
+            del self.loaded_plugins[name]
+            logger.info(f"Unloaded plugin: {name}")
+    
+    def get_plugin_info(self, name: str) -> Optional[PluginInfo]:
+        """获取插件信息
+        
+        Args:
+            name: 插件名称
+            
+        Returns:
+            插件信息，如果不存在则返回None
+        """
+        return self.discovered_plugins.get(name)
+    
+    def list_available_plugins(self) -> List[str]:
+        """列出所有可用的插件
+        
+        Returns:
+            插件名称列表
+        """
+        return list(self.discovered_plugins.keys())
+    
+    def list_loaded_plugins(self) -> List[str]:
+        """列出所有已加载的插件
+        
+        Returns:
+            已加载的插件名称列表
+        """
+        return list(self.loaded_plugins.keys())
 
 from ascend.core.exceptions import PluginError, PluginNotFoundError
 from ascend.core.types import Config

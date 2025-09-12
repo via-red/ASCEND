@@ -1,71 +1,255 @@
 """
 ASCEND配置验证器
-提供配置数据的验证和完整性检查
+提供配置数据的验证和完整性检查。支持以下特性：
+- 类型检查
+- 值范围验证
+- 必需字段验证
+- 格式验证
+- 自定义验证规则
 """
 
 import re
-from typing import Dict, Any, List, Optional, Set
+import logging
+from typing import Dict, Any, List, Optional, Set, Callable, Union
 from pathlib import Path
+from pydantic import BaseModel, validator, Field
 
-from ascend.core.exceptions import ValidationError
+from ..core.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
+
+class RangeValidator:
+    """范围验证器"""
+    
+    @staticmethod
+    def validate_range(
+        value: Union[int, float],
+        min_val: Optional[Union[int, float]] = None,
+        max_val: Optional[Union[int, float]] = None,
+        inclusive: bool = True
+    ) -> bool:
+        """验证值是否在指定范围内
+        
+        Args:
+            value: 要验证的值
+            min_val: 最小值
+            max_val: 最大值
+            inclusive: 是否包含边界值
+            
+        Returns:
+            是否有效
+        """
+        if min_val is not None:
+            if inclusive:
+                if value < min_val:
+                    return False
+            else:
+                if value <= min_val:
+                    return False
+                
+        if max_val is not None:
+            if inclusive:
+                if value > max_val:
+                    return False
+            else:
+                if value >= max_val:
+                    return False
+                
+        return True
+
+class FormatValidator:
+    """格式验证器"""
+    
+    @staticmethod
+    def validate_regex(value: str, pattern: str) -> bool:
+        """验证字符串是否匹配正则表达式
+        
+        Args:
+            value: 要验证的字符串
+            pattern: 正则表达式
+            
+        Returns:
+            是否匹配
+        """
+        return bool(re.match(pattern, value))
+    
+    @staticmethod
+    def validate_file_path(path: str, must_exist: bool = True) -> bool:
+        """验证文件路径
+        
+        Args:
+            path: 文件路径
+            must_exist: 文件是否必须存在
+            
+        Returns:
+            是否有效
+        """
+        try:
+            path_obj = Path(path)
+            return not must_exist or path_obj.exists()
+        except:
+            return False
+    
+    @staticmethod
+    def validate_url(url: str) -> bool:
+        """验证URL格式
+        
+        Args:
+            url: URL字符串
+            
+        Returns:
+            是否有效
+        """
+        pattern = r'^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$'
+        return bool(re.match(pattern, url))
+
+class ConfigValidator:
+    """配置验证器
+    
+    提供配置数据的验证功能。
+    
+    Attributes:
+        schema: 配置模式
+        custom_validators: 自定义验证器
+    """
+    
+    def __init__(self, schema: Optional[BaseModel] = None) -> None:
+        """初始化验证器
+        
+        Args:
+            schema: 配置模式
+        """
+        self.schema = schema
+        self.custom_validators: Dict[str, List[Callable]] = {}
+        
+    def add_validator(self, field: str, validator_func: Callable) -> None:
+        """添加自定义验证器
+        
+        Args:
+            field: 字段名
+            validator_func: 验证函数
+        """
+        if field not in self.custom_validators:
+            self.custom_validators[field] = []
+        self.custom_validators[field].append(validator_func)
+        
+    def validate(self, config: Dict[str, Any]) -> None:
+        """验证配置数据
+        
+        Args:
+            config: 配置字典
+            
+        Raises:
+            ValidationError: 验证失败
+        """
+        # 使用模式验证
+        if self.schema:
+            try:
+                self.schema(**config)
+            except Exception as e:
+                raise ValidationError(f"Schema validation failed: {e}")
+        
+        # 应用自定义验证器
+        for field, validators in self.custom_validators.items():
+            if field in config:
+                value = config[field]
+                for validator_func in validators:
+                    try:
+                        if not validator_func(value):
+                            raise ValidationError(
+                                f"Validation failed for field {field}"
+                            )
+                    except Exception as e:
+                        raise ValidationError(
+                            f"Validation error for field {field}: {e}"
+                        )
+    
+    def validate_required_fields(
+        self,
+        config: Dict[str, Any],
+        required_fields: Set[str]
+    ) -> None:
+        """验证必需字段
+        
+        Args:
+            config: 配置字典
+            required_fields: 必需字段集合
+            
+        Raises:
+            ValidationError: 缺少必需字段
+        """
+        missing = required_fields - set(config.keys())
+        if missing:
+            raise ValidationError(f"Missing required fields: {missing}")
+    
+    def validate_field_types(
+        self,
+        config: Dict[str, Any],
+        type_mapping: Dict[str, type]
+    ) -> None:
+        """验证字段类型
+        
+        Args:
+            config: 配置字典
+            type_mapping: 字段类型映射
+            
+        Raises:
+            ValidationError: 字段类型不匹配
+        """
+        for field, expected_type in type_mapping.items():
+            if field in config:
+                value = config[field]
+                if not isinstance(value, expected_type):
+                    raise ValidationError(
+                        f"Field {field} should be of type {expected_type.__name__}"
+                    )
+    
+    def validate_field_values(
+        self,
+        config: Dict[str, Any],
+        value_constraints: Dict[str, Dict[str, Any]]
+    ) -> None:
+        """验证字段值
+        
+        Args:
+            config: 配置字典
+            value_constraints: 值约束字典
+            
+        Raises:
+            ValidationError: 值验证失败
+        """
+        for field, constraints in value_constraints.items():
+            if field in config:
+                value = config[field]
+                
+                # 范围检查
+                if 'range' in constraints:
+                    range_spec = constraints['range']
+                    if not RangeValidator.validate_range(
+                        value,
+                        range_spec.get('min'),
+                        range_spec.get('max'),
+                        range_spec.get('inclusive', True)
+                    ):
+                        raise ValidationError(
+                            f"Value of field {field} is out of range"
+                        )
+                
+                # 格式检查
+                if 'format' in constraints:
+                    format_spec = constraints['format']
+                    if 'regex' in format_spec:
+                        if not FormatValidator.validate_regex(
+                            str(value),
+                            format_spec['regex']
+                        ):
+                            raise ValidationError(
+                                f"Value of field {field} has invalid format"
+                            )
 from ascend.core.types import Config, ComponentType
 
 class ConfigValidator:
     """配置验证器类"""
-    
-    # 基础验证规则
-    BASE_RULES = {
-        'version': {
-            'required': True,
-            'type': 'string',
-            'pattern': r'^\d+\.\d+\.\d+$'  # 语义化版本格式
-        },
-        'framework': {
-            'required': True,
-            'type': 'string',
-            'allowed': ['ascend']
-        },
-        'agent.type': {
-            'required': True,
-            'type': 'string',
-            'min_length': 1
-        },
-        'environment.type': {
-            'required': True,
-            'type': 'string',
-            'min_length': 1
-        },
-        'training.total_timesteps': {
-            'required': True,
-            'type': 'integer',
-            'min': 1000
-        },
-        'training.learning_rate': {
-            'type': 'number',
-            'min': 0,
-            'max': 1
-        }
-    }
-    
-    # 组件类型验证规则
-    COMPONENT_RULES = {
-        ComponentType.AGENT.value: {
-            'type': {'required': True, 'type': 'string'},
-            'config': {'type': 'dict'}
-        },
-        ComponentType.ENVIRONMENT.value: {
-            'type': {'required': True, 'type': 'string'},
-            'config': {'type': 'dict'}
-        },
-        ComponentType.MODEL.value: {
-            'type': {'required': True, 'type': 'string'},
-            'config': {'type': 'dict'}
-        },
-        ComponentType.REWARD.value: {
-            'type': {'required': True, 'type': 'string'},
-            'config': {'type': 'dict'}
-        }
-    }
     
     def __init__(self):
         self.errors: List[str] = []
@@ -88,17 +272,15 @@ class ConfigValidator:
             # 基础结构验证
             self._validate_basic_structure(config)
             
-            # 字段级验证
-            self._validate_fields(config, self.BASE_RULES)
-            
-            # 组件配置验证
-            self._validate_components(config)
-            
             # 插件依赖验证
             self._validate_plugin_dependencies(config)
             
             # 路径验证
             self._validate_paths(config)
+            
+            # 注意：详细的字段级验证和组件验证逻辑已被移除，
+            # 将由插件自身的Pydantic模型处理。
+            # 此处可以保留一些全局级别的或跨插件的验证规则。
             
             return len(self.errors) == 0
             

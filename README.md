@@ -2,9 +2,32 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-available-brightgreen)](https://ascend-ai.github.io/ascend)
 
-**Agent-Native System with Cognitive Embedding for Decision-Making**
+Agent-Native System with Cognitive Embedding for Decision-Making
+
+## 项目愿景
+
+当前市场对AI的理解仍停留在"LLM+"的工具化应用层面。我们认为，下一代AI应用将是"智能体原生"（Agent-Native）的。其核心特征是从被动响应走向主动决策与持续优化。
+
+### 三层架构设计
+
+1. **决策层（RL Framework）**
+   - 作为"大脑中枢"
+   - 设定目标与奖励函数
+   - 评估状态、做出决策
+   - 持续学习与优化
+
+2. **认知层（LLM & Knowledge）**
+   - 理解非结构化信息
+   - 生成候选决策方案
+   - 提供决策解释
+   - 管理知识库
+
+3. **感知层（Domain Models）**
+   - 提供精准分析
+   - 构建训练环境
+   - 执行具体动作
+   - 收集反馈
 
 一个基于强化学习的主动式智能体通用框架，采用完全抽象、协议驱动的设计，支持插件化架构和配置驱动的工作流。
 
@@ -16,89 +39,11 @@
 - **配置驱动**: 通过YAML/JSON配置定义智能体行为
 - **技术无关**: 不绑定特定技术栈，支持多种实现
 
-## 📦 安装
+## 📦 快速开始
 
-### 从PyPI安装（开发中）
+请访问我们的[开发者指南](./DEVELOPER_GUIDE.md)获取详细的安装和使用说明。
 
-```bash
-pip install ascend-framework
-```
 
-### 从源码安装
-
-```bash
-git clone https://github.com/ascend-ai/ascend.git
-cd ascend
-pip install -e .
-```
-
-### 可选依赖
-
-```bash
-# 开发依赖
-pip install ascend-framework[dev]
-
-# LLM相关功能
-pip install ascend-framework[llm]
-
-# 强化学习功能
-pip install ascend-framework[rl]
-
-# 监控和可视化
-pip install ascend-framework[monitoring]
-```
-
-## 🎯 快速开始
-
-### 基础使用示例
-
-```python
-from ascend import load_config, validate_config, create_default_config
-from ascend import load_plugins, list_loaded_plugins
-
-# 加载配置文件
-config = load_config("config.yaml")
-
-# 验证配置
-is_valid = validate_config(config)
-
-# 创建默认配置
-default_config = create_default_config()
-
-# 加载插件
-plugins = load_plugins(["ascend_rl_sb3", "ascend_env_gym"])
-
-# 列出已加载插件
-loaded_plugins = list_loaded_plugins()
-```
-
-### 配置文件示例 (`config.yaml`)
-
-```yaml
-version: "1.0.0"
-framework: "ascend"
-
-agent:
-  type: "ppo_agent"
-  config:
-    learning_rate: 0.0003
-    batch_size: 64
-
-environment:
-  type: "cartpole_env"
-  config:
-    env_id: "CartPole-v1"
-    max_episode_steps: 500
-
-training:
-  total_timesteps: 100000
-  learning_starts: 10000
-  gamma: 0.99
-
-plugins:
-  - "ascend_rl_sb3"
-  - "ascend_env_gym"
-```
 
 ## 🏗️ 架构设计
 
@@ -123,43 +68,7 @@ ASCEND框架基于以下核心协议构建：
 
 ## 🔌 插件系统
 
-### 创建自定义插件
-
-```python
-from ascend.plugins import BasePlugin
-from ascend.core import PluginMetadata
-
-class MyCustomPlugin(BasePlugin):
-    def __init__(self):
-        super().__init__(
-            name="my_plugin",
-            version="0.1.0",
-            description="我的自定义插件",
-            author="Your Name"
-        )
-    
-    def register(self, registry):
-        # 注册插件组件
-        pass
-    
-    def _get_required_plugins(self):
-        return ["ascend_rl_sb3"]
-    
-    def _get_provided_components(self):
-        return ["my_component"]
-```
-
-### 插件发现和加载
-
-```python
-from ascend import discover_plugins, load_plugin
-
-# 自动发现可用插件
-available_plugins = discover_plugins()
-
-# 加载特定插件
-plugin = load_plugin("my_plugin", config={"param": "value"})
-```
+ASCEND框架提供了强大的插件系统，支持功能扩展和自定义实现。详细信息请参考[开发者指南](./DEVELOPER_GUIDE.md)的插件开发章节。
 
 ## 📚 核心概念
 

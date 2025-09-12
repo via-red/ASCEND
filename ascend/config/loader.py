@@ -1,13 +1,229 @@
 """
 ASCEND配置加载器
-提供配置文件的加载、解析和验证功能
+提供配置文件的加载、解析和验证功能。支持以下特性：
+- YAML 配置文件的加载和解析
+- 配置模式验证
+- 环境变量替换
+- 默认值处理
+- 配置合并
 """
 
 import os
-from typing import Dict, Any, Optional, List
+import yaml
+import logging
+from typing import Dict, Any, Optional, List, Union, Type
 from pathlib import Path
+from pydantic import BaseModel, ValidationError
 
-from ascend.core.exceptions import ConfigError, ValidationError
+from ..core.exceptions import ConfigError
+
+logger = logging.getLogger(__name__)
+
+class ConfigLoader:
+    """配置加载器
+    
+    负责加载、解析和验证配置文件。
+    
+    Attributes:
+        config_paths: 配置文件搜索路径
+        default_config: 默认配置
+        env_prefix: 环境变量前缀
+    """
+    
+    def __init__(
+        self, 
+        config_paths: Optional[List[str]] = None,
+        default_config: Optional[Dict[str, Any]] = None,
+        env_prefix: str = "ASCEND_"
+    ) -> None:
+        """初始化配置加载器
+        
+        Args:
+            config_paths: 配置文件搜索路径列表
+            default_config: 默认配置字典
+            env_prefix: 环境变量前缀
+        """
+        self.config_paths = config_paths or []
+        self.default_config = default_config or {}
+        self.env_prefix = env_prefix
+        self._add_default_paths()
+    
+    def _add_default_paths(self) -> None:
+        """添加默认的配置文件搜索路径"""
+        # 添加当前目录
+        self.config_paths.append(os.getcwd())
+        
+        # 添加用户配置目录
+        user_config = Path.home() / ".ascend" / "config"
+        if user_config.exists():
+            self.config_paths.append(str(user_config))
+        
+        # 添加系统配置目录
+        if os.name == "posix":
+            if Path("/etc/ascend").exists():
+                self.config_paths.append("/etc/ascend")
+    
+    def load_config(
+        self,
+        config_file: Optional[str] = None,
+        schema: Optional[Type[BaseModel]] = None
+    ) -> Dict[str, Any]:
+        """加载配置文件
+        
+        Args:
+            config_file: 配置文件路径，如果为None则搜索默认路径
+            schema: 配置模式类
+            
+        Returns:
+            配置字典
+            
+        Raises:
+            ConfigError: 配置加载或验证失败
+        """
+        # 查找配置文件
+        config_path = self._find_config_file(config_file)
+        if not config_path:
+            raise ConfigError("Config file not found")
+        
+        try:
+            # 加载YAML文件
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+            
+            # 合并默认配置
+            config = self._merge_configs(self.default_config, config)
+            
+            # 处理环境变量
+            config = self._process_env_vars(config)
+            
+            # 验证配置
+            if schema:
+                try:
+                    validated = schema(**config)
+                    config = validated.dict()
+                except ValidationError as e:
+                    raise ConfigError(f"Config validation failed: {e}")
+            
+            return config
+            
+        except Exception as e:
+            raise ConfigError(f"Failed to load config file {config_path}: {e}")
+    
+    def _find_config_file(self, config_file: Optional[str] = None) -> Optional[Path]:
+        """查找配置文件
+        
+        Args:
+            config_file: 配置文件路径
+            
+        Returns:
+            配置文件路径，如果未找到则返回None
+        """
+        if config_file:
+            path = Path(config_file)
+            return path if path.exists() else None
+        
+        # 在搜索路径中查找默认配置文件
+        for path in self.config_paths:
+            for name in ["config.yaml", "config.yml"]:
+                config_path = Path(path) / name
+                if config_path.exists():
+                    return config_path
+        
+        return None
+    
+    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """合并配置字典
+        
+        Args:
+            base: 基础配置
+            override: 覆盖配置
+            
+        Returns:
+            合并后的配置
+        """
+        result = base.copy()
+        for key, value in override.items():
+            # 如果两个都是字典则递归合并
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._merge_configs(result[key], value)
+            else:
+                result[key] = value
+        return result
+    
+    def _process_env_vars(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """处理环境变量
+        
+        将配置中的环境变量引用替换为实际值。
+        支持的格式: ${ENV_VAR} 或 ${ENV_VAR:default}
+        
+        Args:
+            config: 配置字典
+            
+        Returns:
+            处理后的配置
+        """
+        def _process_value(value: Any) -> Any:
+            if isinstance(value, str):
+                # 处理环境变量引用
+                if value.startswith("${") and value.endswith("}"):
+                    env_var = value[2:-1]
+                    if ":" in env_var:
+                        env_var, default = env_var.split(":", 1)
+                    else:
+                        default = None
+                    
+                    env_var = self.env_prefix + env_var
+                    return os.environ.get(env_var, default)
+                return value
+            elif isinstance(value, dict):
+                return {k: _process_value(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [_process_value(v) for v in value]
+            return value
+        
+        return _process_value(config)
+    
+    def save_config(self, config: Dict[str, Any], file_path: str) -> None:
+        """保存配置到文件
+        
+        Args:
+            config: 配置字典
+            file_path: 保存路径
+        """
+        try:
+            path = Path(file_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(path, 'w', encoding='utf-8') as f:
+                yaml.safe_dump(config, f, default_flow_style=False)
+                
+            logger.info(f"Saved config to {file_path}")
+            
+        except Exception as e:
+            raise ConfigError(f"Failed to save config to {file_path}: {e}")
+    
+    def validate_config(
+        self, 
+        config: Dict[str, Any],
+        schema: Type[BaseModel]
+    ) -> Dict[str, Any]:
+        """验证配置
+        
+        Args:
+            config: 配置字典
+            schema: 配置模式类
+            
+        Returns:
+            验证后的配置
+            
+        Raises:
+            ConfigError: 验证失败
+        """
+        try:
+            validated = schema(**config)
+            return validated.dict()
+        except ValidationError as e:
+            raise ConfigError(f"Config validation failed: {e}")
 from ascend.core.types import Config
 from .parser import ConfigParser, default_parser
 from .validator import ConfigValidator, default_validator

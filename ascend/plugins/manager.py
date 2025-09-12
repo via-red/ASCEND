@@ -1,12 +1,262 @@
 """
 ASCEND插件管理器
-提供插件的加载、管理和生命周期管理功能
+提供插件的加载、管理和生命周期管理功能。支持以下特性：
+- 插件的生命周期管理（加载、初始化、启动、停止、卸载）
+- 插件配置管理
+- 插件依赖管理
+- 插件状态监控
 """
 
 import importlib
 import pkg_resources
+import logging
 from typing import Dict, Any, List, Optional, Type
 from pathlib import Path
+from enum import Enum, auto
+from dataclasses import dataclass
+from pydantic import ValidationError
+
+from .base import IPlugin
+from .discovery import PluginDiscovery, PluginInfo
+from ..core.exceptions import PluginError
+
+logger = logging.getLogger(__name__)
+
+class PluginState(Enum):
+    """插件状态枚举
+    
+    - DISCOVERED: 已发现但未加载
+    - LOADED: 已加载但未初始化
+    - INITIALIZED: 已初始化但未启动
+    - RUNNING: 正在运行
+    - STOPPED: 已停止
+    - ERROR: 错误状态
+    """
+    DISCOVERED = auto()
+    LOADED = auto()
+    INITIALIZED = auto()
+    RUNNING = auto()
+    STOPPED = auto()
+    ERROR = auto()
+
+@dataclass
+class PluginStatus:
+    """插件状态信息
+    
+    Attributes:
+        state: 当前状态
+        error: 错误信息（如果有）
+        config: 当前配置
+        dependencies: 依赖状态
+    """
+    state: PluginState
+    error: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+    dependencies: Dict[str, bool] = None  # 依赖名称 -> 是否满足
+
+    def __post_init__(self):
+        if self.dependencies is None:
+            self.dependencies = {}
+
+class PluginManager:
+    """插件管理器
+    
+    负责插件的生命周期管理和状态维护。
+    
+    Attributes:
+        discovery: 插件发现器
+        plugins: 已加载的插件实例
+        plugin_status: 插件状态信息
+    """
+    
+    def __init__(self, plugin_paths: Optional[List[str]] = None) -> None:
+        """初始化插件管理器
+        
+        Args:
+            plugin_paths: 插件搜索路径
+        """
+        self.discovery = PluginDiscovery(plugin_paths)
+        self.plugins: Dict[str, IPlugin] = {}
+        self.plugin_status: Dict[str, PluginStatus] = {}
+        
+    def discover_plugins(self) -> Dict[str, PluginInfo]:
+        """发现可用的插件
+        
+        Returns:
+            插件信息字典
+        """
+        discovered = self.discovery.discover_plugins()
+        
+        # 更新插件状态
+        for name, info in discovered.items():
+            if name not in self.plugin_status:
+                self.plugin_status[name] = PluginStatus(
+                    state=PluginState.DISCOVERED,
+                    dependencies={dep: False for dep in info.dependencies}
+                )
+                
+        return discovered
+    
+    def load_plugin(self, name: str) -> IPlugin:
+        """加载插件
+        
+        Args:
+            name: 插件名称
+            
+        Returns:
+            插件实例
+            
+        Raises:
+            PluginError: 插件加载失败
+        """
+        try:
+            # 检查依赖
+            info = self.discovery.get_plugin_info(name)
+            if not info:
+                raise PluginError(f"Plugin {name} not found")
+                
+            for dep in info.dependencies:
+                if dep not in self.plugins:
+                    self.load_plugin(dep)
+            
+            # 加载插件
+            plugin = self.discovery.load_plugin(name)
+            self.plugins[name] = plugin
+            
+            # 更新状态
+            status = self.plugin_status.get(name)
+            if status:
+                status.state = PluginState.LOADED
+                for dep in info.dependencies:
+                    status.dependencies[dep] = True
+            
+            return plugin
+            
+        except Exception as e:
+            if name in self.plugin_status:
+                self.plugin_status[name].state = PluginState.ERROR
+                self.plugin_status[name].error = str(e)
+            raise PluginError(f"Failed to load plugin {name}: {e}")
+    
+    def initialize_plugin(self, name: str, config: Optional[Dict[str, Any]] = None) -> None:
+        """初始化插件
+        
+        Args:
+            name: 插件名称
+            config: 配置参数
+        """
+        plugin = self.plugins.get(name)
+        if not plugin:
+            raise PluginError(f"Plugin {name} not loaded")
+            
+        try:
+            if config:
+                plugin.configure(config)
+                
+            status = self.plugin_status[name]
+            status.state = PluginState.INITIALIZED
+            status.config = config
+            
+        except Exception as e:
+            self.plugin_status[name].state = PluginState.ERROR
+            self.plugin_status[name].error = str(e)
+            raise PluginError(f"Failed to initialize plugin {name}: {e}")
+    
+    def start_plugin(self, name: str) -> None:
+        """启动插件
+        
+        Args:
+            name: 插件名称
+        """
+        status = self.plugin_status.get(name)
+        if not status or status.state != PluginState.INITIALIZED:
+            raise PluginError(f"Plugin {name} not initialized")
+        
+        try:
+            # 如果插件有start方法，调用它
+            plugin = self.plugins[name]
+            if hasattr(plugin, 'start') and callable(getattr(plugin, 'start')):
+                plugin.start()
+            
+            status.state = PluginState.RUNNING
+            
+        except Exception as e:
+            status.state = PluginState.ERROR
+            status.error = str(e)
+            raise PluginError(f"Failed to start plugin {name}: {e}")
+    
+    def stop_plugin(self, name: str) -> None:
+        """停止插件
+        
+        Args:
+            name: 插件名称
+        """
+        status = self.plugin_status.get(name)
+        if not status or status.state != PluginState.RUNNING:
+            raise PluginError(f"Plugin {name} not running")
+        
+        try:
+            # 如果插件有stop方法，调用它
+            plugin = self.plugins[name]
+            if hasattr(plugin, 'stop') and callable(getattr(plugin, 'stop')):
+                plugin.stop()
+            
+            status.state = PluginState.STOPPED
+            
+        except Exception as e:
+            status.state = PluginState.ERROR
+            status.error = str(e)
+            raise PluginError(f"Failed to stop plugin {name}: {e}")
+    
+    def unload_plugin(self, name: str) -> None:
+        """卸载插件
+        
+        Args:
+            name: 插件名称
+        """
+        if name not in self.plugins:
+            return
+            
+        # 首先停止插件
+        status = self.plugin_status.get(name)
+        if status and status.state == PluginState.RUNNING:
+            self.stop_plugin(name)
+        
+        # 卸载插件
+        self.discovery.unload_plugin(name)
+        del self.plugins[name]
+        if name in self.plugin_status:
+            del self.plugin_status[name]
+    
+    def get_plugin(self, name: str) -> Optional[IPlugin]:
+        """获取插件实例
+        
+        Args:
+            name: 插件名称
+            
+        Returns:
+            插件实例，如果不存在则返回None
+        """
+        return self.plugins.get(name)
+    
+    def get_plugin_status(self, name: str) -> Optional[PluginStatus]:
+        """获取插件状态
+        
+        Args:
+            name: 插件名称
+            
+        Returns:
+            插件状态，如果不存在则返回None
+        """
+        return self.plugin_status.get(name)
+    
+    def list_plugins(self) -> List[str]:
+        """列出所有已加载的插件
+        
+        Returns:
+            插件名称列表
+        """
+        return list(self.plugins.keys())
 
 from ascend.core.exceptions import PluginError, PluginNotFoundError, PluginLoadError
 from ascend.core.types import Config

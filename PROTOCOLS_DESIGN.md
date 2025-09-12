@@ -9,98 +9,81 @@
 
 ## 核心协议定义
 
-### 1. 状态协议 (State Protocol)
-```python
-from typing import Protocol, Any, Dict, List
-from dataclasses import dataclass
-from typing_extensions import TypeAlias
+### 1. 基础类型定义
 
-# 基础类型定义
-State: TypeAlias = Dict[str, Any]
-Action: TypeAlias = Any
-Reward: TypeAlias = float
-Experience: TypeAlias = Dict[str, Any]
-```
+框架定义了以下核心类型：
+
+- **State**: 表示环境状态的字典类型，可包含任意类型的观察数据
+- **Action**: 表示智能体动作的通用类型，支持离散和连续动作空间
+- **Reward**: 表示奖励信号的浮点数类型
+- **Experience**: 包含状态转换信息的字典类型，用于训练和优化
 
 ### 2. 智能体协议 (IAgent)
-```python
-class IAgent(Protocol):
-    """智能体核心协议，定义决策和学习行为"""
-    
-    def act(self, state: State) -> Action:
-        """根据当前状态选择动作"""
-        ...
-    
-    def learn(self, experiences: List[Experience]) -> Dict[str, Any]:
-        """从经验中学习，返回学习指标"""
-        ...
-    
-    def save(self, path: str) -> None:
-        """保存智能体状态"""
-        ...
-    
-    def load(self, path: str) -> None:
-        """加载智能体状态"""
-        ...
-    
-    def get_config(self) -> Dict[str, Any]:
-        """获取智能体配置"""
-        ...
-```
+
+智能体是框架的核心抽象，定义了智能体的基本行为和能力：
+
+1. **决策能力 (act)**
+   - 接收当前环境状态
+   - 返回选择的动作
+   - 支持确定性和随机策略
+
+2. **学习能力 (learn)**
+   - 从经验数据中学习
+   - 优化决策策略
+   - 返回学习指标
+
+3. **状态管理**
+   - 保存智能体状态
+   - 加载已有模型
+   - 管理训练进度
+
+4. **配置管理**
+   - 获取当前配置
+   - 动态更新参数
+   - 支持热重载
 
 ### 3. 环境协议 (IEnvironment)
-```python
-class IEnvironment(Protocol):
-    """环境交互协议，定义RL环境接口"""
-    
-    def reset(self) -> State:
-        """重置环境到初始状态"""
-        ...
-    
-    def step(self, action: Action) -> tuple[State, Reward, bool, Dict[str, Any]]:
-        """执行动作，返回(next_state, reward, done, info)"""
-        ...
-    
-    def render(self) -> Any:
-        """渲染环境状态"""
-        ...
-    
-    def close(self) -> None:
-        """关闭环境资源"""
-        ...
-    
-    @property
-    def observation_space(self) -> Any:
-        """观察空间定义"""
-        ...
-    
-    @property
-    def action_space(self) -> Any:
-        """动作空间定义"""
-        ...
-```
+
+环境协议定义了智能体可以交互的世界模型：
+
+1. **状态转换**
+   - 接收智能体动作
+   - 返回新的状态、奖励和完成标志
+   - 提供额外的环境信息
+
+2. **环境控制**
+   - 重置到初始状态
+   - 渲染环境状态
+   - 管理环境资源
+
+3. **空间定义**
+   - 定义观察空间
+   - 定义动作空间
+   - 约束交互范围
+
+4. **资源管理**
+   - 创建环境实例
+   - 释放系统资源
+   - 确保清理完成
 
 ### 4. 策略协议 (IPolicy)
-```python
-class IPolicy(Protocol):
-    """策略协议，定义决策逻辑"""
-    
-    def get_action(self, state: State) -> Action:
-        """根据状态选择动作"""
-        ...
-    
-    def update(self, experiences: List[Experience]) -> Dict[str, Any]:
-        """更新策略参数"""
-        ...
-    
-    def save(self, path: str) -> None:
-        """保存策略状态"""
-        ...
-    
-    def load(self, path: str) -> None:
-        """加载策略状态"""
-        ...
-```
+
+策略协议定义了智能体的决策方法：
+
+1. **动作选择**
+   - 基于当前状态
+   - 支持探索与利用
+   - 处理连续和离散动作
+
+2. **策略更新**
+   - 从经验中学习
+   - 优化策略参数
+   - 返回更新指标
+
+3. **状态维护**
+   - 保存策略状态
+   - 加载已有策略
+   - 管理版本信息
 
 ### 5. 模型协议 (IModel)
 ```python

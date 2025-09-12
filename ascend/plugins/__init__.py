@@ -3,6 +3,8 @@ ASCEND插件模块
 提供插件系统的核心功能，包括插件管理、发现和生命周期管理
 """
 
+from typing import Any, Dict, List, Optional, Tuple
+
 from .base import BasePlugin, PluginRegistry
 from .manager import PluginManager, default_manager
 from .discovery import PluginDiscovery, default_discovery, discover_and_load_plugins, auto_discover_plugins

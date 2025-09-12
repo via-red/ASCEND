@@ -3,12 +3,16 @@ ASCEND插件基础类
 提供插件系统的核心抽象和基础实现
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Type, TYPE_CHECKING
 from abc import ABC, abstractmethod
+from pydantic import BaseModel, ValidationError as PydanticValidationError
 
 from ascend.core.protocols import IPlugin
 from ascend.core.types import PluginMetadata
 from ascend.core.exceptions import PluginError
+
+if TYPE_CHECKING:
+    from ascend.plugins.manager import IPluginRegistry
 
 class BasePlugin(IPlugin, ABC):
     """插件基础抽象类"""
@@ -89,7 +93,15 @@ class BasePlugin(IPlugin, ABC):
             provides=self._get_provided_components(),
             compatible_with=self._get_compatible_versions()
         ).to_dict()
-    
+
+    def get_config_schema(self) -> Optional[Type[BaseModel]]:
+        """获取插件配置的Pydantic模型（子类可重写）
+        
+        Returns:
+            Pydantic BaseModel类或None
+        """
+        return None
+
     def initialize(self) -> None:
         """初始化插件
         
@@ -141,7 +153,15 @@ class BasePlugin(IPlugin, ABC):
         if not isinstance(config, dict):
             raise PluginError("Plugin config must be a dictionary", self.name)
         
-        # 子类可以重写此方法实现具体的配置验证
+        # 使用Pydantic模型进行验证
+        schema = self.get_config_schema()
+        if schema:
+            try:
+                schema.model_validate(config)
+            except PydanticValidationError as e:
+                raise PluginError(f"Configuration validation failed: {e}", self.name)
+
+        # 子类可以重写此方法实现额外的自定义验证
         self._validate_custom_config(config)
     
     def _validate_custom_config(self, config: Dict[str, Any]) -> None:
