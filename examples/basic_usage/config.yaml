@@ -2,6 +2,13 @@
 version: "1.0.0"
 framework: "ascend"
 
+# 智能体配置
+agent:
+  type: "base_agent"
+  config:
+    learning_rate: 0.001
+    batch_size: 64
+
 # 环境配置
 environment:
   name: "SimpleEnvironment"

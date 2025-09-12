@@ -108,7 +108,9 @@ class BaseAgent(ABC):
             path: 保存路径
         """
         # 确保目录存在
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        dir_path = os.path.dirname(path)
+        if dir_path:  # 只有当目录路径不为空时才创建
+            os.makedirs(dir_path, exist_ok=True)
         
         # 保存策略
         policy_path = os.path.join(path, "policy.pt")

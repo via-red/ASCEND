@@ -286,7 +286,8 @@ class ConfigValidator:
             
         except ValidationError as e:
             if strict:
-                raise
+                # 重新抛出ValidationError，但确保参数正确
+                raise ValidationError(str(e))
             self.errors.append(str(e))
             return False
     

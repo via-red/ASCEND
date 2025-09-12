@@ -1,0 +1,1 @@
+{"algorithm": "ppo", "policy": "MlpPolicy", "learning_rate": 0.0003, "batch_size": 64, "n_steps": 2048, "device": "auto", "verbose": 1}

@@ -13,9 +13,9 @@ import yaml
 import logging
 from typing import Dict, Any, Optional, List, Union, Type
 from pathlib import Path
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
-from ..core.exceptions import ConfigError
+from ..core.exceptions import ConfigError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class BaseConfigLoader:
                     validated = schema(**config)
                     config = validated.dict()
                 except ValidationError as e:
-                    raise ConfigError(f"Config validation failed: {e}")
+                    raise ConfigError(f"Config validation failed: {str(e)}", config_path=str(config_path))
             
             return config
             
@@ -361,7 +361,7 @@ class ConfigLoader(BaseConfigLoader):
             if warnings:
                 error_msg += "\n\nWarnings:\n- " + "\n- ".join(warnings)
             
-            raise ValidationError(error_msg)
+            raise ValidationError(error_msg, "configuration")
         
         return True
     
