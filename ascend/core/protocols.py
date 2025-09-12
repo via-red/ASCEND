@@ -1,6 +1,6 @@
 """
 ASCEND核心协议定义
-基于Python Protocol的完全抽象接口设计
+基于Python Protocol的完全抽象接口设计，支持智能体原生架构
 """
 
 from typing import Protocol, Any, Dict, List, Tuple, Optional, Union
@@ -13,6 +13,8 @@ State: TypeAlias = Dict[str, Any]
 Action: TypeAlias = Any
 Reward: TypeAlias = float
 Info: TypeAlias = Dict[str, Any]
+Knowledge: TypeAlias = Dict[str, Any]
+Feature: TypeAlias = Dict[str, Any]
 
 @dataclass
 class Experience:
