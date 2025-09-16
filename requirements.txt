@@ -1,24 +1,20 @@
 # ASCEND框架核心依赖
+# 注意：主要依赖已迁移到pyproject.toml中
+# 此文件用于其他用途或简化安装
+
+# 核心运行时依赖
 pydantic>=2.0.0
 PyYAML>=6.0
 numpy>=1.21.0
+pandas>=1.5.0
+setuptools>=68.0
 
-# 强化学习依赖
-gymnasium>=0.29.0
-stable-baselines3>=2.1.0
-torch>=2.0.0
+# 量化插件可选依赖
+# TA-Lib需要系统依赖，建议单独安装
+# TA-Lib>=0.4.0
 
-# 开发工具
+# 开发工具（可选）
 pytest>=7.0.0
 black>=22.0.0
 mypy>=1.0.0
 pylint>=2.15.0
-
-# 量化插件依赖
-pandas>=1.5.0
-scikit-learn>=1.2.0
-tushare>=1.3.0
-pyarrow>=12.0.0
-feather-format>=0.4.0
-matplotlib>=3.7.0
-seaborn>=0.12.0

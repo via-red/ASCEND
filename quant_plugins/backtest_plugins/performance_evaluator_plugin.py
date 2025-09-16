@@ -10,7 +10,7 @@
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -30,7 +30,7 @@ class PerformanceEvaluatorPluginConfig(BaseModel):
     enable_detailed_stats: bool = Field(True, description="是否启用详细统计")
     max_lookback_period: int = Field(252, description="最大回看周期")
     
-    @validator('risk_free_rate')
+    @field_validator('risk_free_rate')
     def validate_risk_free_rate(cls, v):
         if v < 0:
             raise ValueError('Risk free rate cannot be negative')
@@ -49,6 +49,7 @@ class PerformanceEvaluatorPlugin(BasePlugin, IPerformanceEvaluator):
             license="Apache 2.0"
         )
         self._metrics_cache = {}
+        self._logger = None
     
     def get_config_schema(self) -> Optional[type]:
         """获取配置模型"""
@@ -56,7 +57,9 @@ class PerformanceEvaluatorPlugin(BasePlugin, IPerformanceEvaluator):
     
     def _initialize(self) -> None:
         """初始化性能评估器"""
+        self._setup_logging()
         self._metrics_cache = {}
+        self._logger.info("性能评估器插件初始化完成")
     
     def calculate_metrics(self, equity_curve: pd.Series, 
                          trades: List[Dict], **kwargs) -> Dict[str, float]:
@@ -359,7 +362,8 @@ class PerformanceEvaluatorPlugin(BasePlugin, IPerformanceEvaluator):
             }
             
         except Exception as e:
-            self.logger.error(f"Benchmark comparison failed: {e}")
+            if self._logger:
+                self._logger.error(f"Benchmark comparison failed: {e}")
             return {
                 'outperformance': 0.0,
                 'correlation': 0.0,
@@ -372,6 +376,22 @@ class PerformanceEvaluatorPlugin(BasePlugin, IPerformanceEvaluator):
         """注册插件到框架"""
         # 注册为性能评估组件
         registry.register_feature_extractor(self.name, self)
+    
+    def _setup_logging(self) -> None:
+        """设置日志系统"""
+        import logging
+        
+        self._logger = logging.getLogger(f"ascend.performance.{self.name}")
+        self._logger.setLevel(logging.INFO)
+        
+        # 如果没有处理器，添加一个
+        if not self._logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self._logger.addHandler(handler)
     
     def _cleanup(self) -> None:
         """清理资源"""

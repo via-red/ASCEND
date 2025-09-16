@@ -10,7 +10,7 @@
 """
 
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -31,21 +31,21 @@ class DataPreprocessingPluginConfig(BaseModel):
     outlier_threshold: float = Field(3.0, description="异常值阈值（标准差倍数）")
     feature_engineering: bool = Field(True, description="是否启用特征工程")
     
-    @validator('missing_value_strategy')
+    @field_validator('missing_value_strategy')
     def validate_missing_strategy(cls, v):
         valid_strategies = ['fill', 'drop', 'interpolate']
         if v not in valid_strategies:
             raise ValueError(f'Missing value strategy must be one of: {valid_strategies}')
         return v
     
-    @validator('scaling_method')
+    @field_validator('scaling_method')
     def validate_scaling_method(cls, v):
         valid_methods = ['standard', 'minmax', 'none']
         if v not in valid_methods:
             raise ValueError(f'Scaling method must be one of: {valid_methods}')
         return v
     
-    @validator('outlier_handling')
+    @field_validator('outlier_handling')
     def validate_outlier_handling(cls, v):
         valid_methods = ['clip', 'remove', 'ignore']
         if v not in valid_methods:

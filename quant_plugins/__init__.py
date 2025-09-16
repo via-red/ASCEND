@@ -15,7 +15,8 @@ from pydantic import BaseModel
 # 导出数据插件
 from .data_plugins import (
     TushareDataPlugin,
-    DataPreprocessingPlugin, 
+    AshareDataPlugin,
+    DataPreprocessingPlugin,
     WarehouseStoragePlugin,
     IDataSourcePlugin,
     IDataProcessorPlugin,
@@ -43,10 +44,11 @@ from .execution_plugins import (
 __all__ = [
     # 数据插件
     'TushareDataPlugin',
+    'AshareDataPlugin',
     'DataPreprocessingPlugin',
     'WarehouseStoragePlugin',
     'IDataSourcePlugin',
-    'IDataProcessorPlugin', 
+    'IDataProcessorPlugin',
     'IDataStoragePlugin',
     
     # 策略插件
@@ -72,6 +74,7 @@ def get_available_plugins() -> Dict[str, List[str]]:
     return {
         'data_plugins': [
             'tushare_data',
+            'ashare_data',
             'data_preprocessing',
             'warehouse_storage'
         ],
@@ -100,6 +103,7 @@ def get_plugin_class(plugin_name: str) -> Optional[Type]:
     """
     plugin_map = {
         'tushare_data': TushareDataPlugin,
+        'ashare_data': AshareDataPlugin,
         'data_preprocessing': DataPreprocessingPlugin,
         'warehouse_storage': WarehouseStoragePlugin,
         'daily_kline_scoring': DailyKlineScoringPlugin,
