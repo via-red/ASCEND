@@ -10,7 +10,7 @@
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -39,14 +39,14 @@ class DailyKlineScoringPluginConfig(BaseModel):
     enable_dynamic_weights: bool = Field(True, description="是否启用动态权重")
     signal_generation: bool = Field(True, description="是否生成交易信号")
     
-    @validator('factor_weights')
+    @field_validator('factor_weights')
     def validate_factor_weights(cls, v):
         total_weight = sum(v.values())
         if abs(total_weight - 1.0) > 0.01:
             raise ValueError('Factor weights must sum to 1.0')
         return v
     
-    @validator('scoring_threshold')
+    @field_validator('scoring_threshold')
     def validate_scoring_threshold(cls, v):
         if not 0 <= v <= 1:
             raise ValueError('Scoring threshold must be between 0 and 1')

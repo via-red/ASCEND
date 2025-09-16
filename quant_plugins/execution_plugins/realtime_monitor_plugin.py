@@ -10,12 +10,13 @@
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import warnings
 import logging
+
 
 from ascend.plugins.base import BasePlugin
 from ascend.core.exceptions import PluginError
@@ -32,13 +33,13 @@ class RealtimeMonitorPluginConfig(BaseModel):
     enable_sms_alerts: bool = Field(False, description="是否启用短信警报")
     log_level: str = Field("INFO", description="日志级别")
     
-    @validator('monitoring_interval')
+    @field_validator('monitoring_interval')
     def validate_monitoring_interval(cls, v):
         if v < 1:
             raise ValueError('Monitoring interval must be at least 1 second')
         return v
     
-    @validator('log_level')
+    @field_validator('log_level')
     def validate_log_level(cls, v):
         valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         if v not in valid_levels:

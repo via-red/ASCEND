@@ -10,7 +10,7 @@
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -30,7 +30,7 @@ class PerformanceEvaluatorPluginConfig(BaseModel):
     enable_detailed_stats: bool = Field(True, description="是否启用详细统计")
     max_lookback_period: int = Field(252, description="最大回看周期")
     
-    @validator('risk_free_rate')
+    @field_validator('risk_free_rate')
     def validate_risk_free_rate(cls, v):
         if v < 0:
             raise ValueError('Risk free rate cannot be negative')
