@@ -1,0 +1,80 @@
+# ASCEND 量化工具配置文件
+version: "1.0.0"
+framework: "ascend"
+
+# 插件配置
+plugins:
+  - "tushare_data"
+  - "data_preprocessing"
+  - "warehouse_storage"
+  - "daily_kline_scoring"
+  - "daily_backtest_engine"
+  - "sim_trader"
+  - "realtime_monitor"
+
+# 数据配置
+data:
+  source: "tushare"
+  start_date: "2023-01-01"
+  end_date: "2023-12-31"
+  symbols_file: "./config/symbols.txt"
+
+# 数据插件配置
+plugin_configs:
+  tushare_data:
+    token: "your_tushare_token_here"  # 需要替换为实际的 Tushare token
+    timeout: 30
+    max_retries: 3
+    cache_enabled: true
+    cache_duration: 3600
+
+  data_preprocessing:
+    missing_value_strategy: "fill"
+    fill_value: 0.0
+    scaling_method: "standard"
+    outlier_handling: "clip"
+    outlier_threshold: 3.0
+    feature_engineering: true
+
+  warehouse_storage:
+    storage_path: "./data/warehouse"
+    storage_format: "parquet"
+    compression: "snappy"
+    auto_cleanup: true
+    max_file_size: 104857600
+    enable_indexing: true
+
+# 策略配置
+strategy:
+  type: "daily_kline_scoring"
+  factor_weights:
+    momentum: 0.35
+    volume: 0.15
+    volatility: 0.15
+    trend: 0.25
+    rsi_strength: 0.10
+  scoring_threshold: 0.65
+
+# 回测配置
+backtest:
+  initial_capital: 1000000
+  commission: 0.0003
+  slippage: 0.0001
+  max_position_per_stock: 0.2
+
+# 执行配置
+execution:
+  type: "simulation"
+  trade_time: "14:55:00"
+
+# 监控配置
+monitoring:
+  enabled: true
+  log_level: "INFO"
+  performance_metrics:
+    - "total_return"
+    - "annualized_return"
+    - "sharpe_ratio"
+    - "max_drawdown"
+    - "win_rate"
+    - "profit_loss_ratio"
