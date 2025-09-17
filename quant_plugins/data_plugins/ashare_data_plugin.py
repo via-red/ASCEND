@@ -59,7 +59,7 @@ class AshareDataPlugin(BasePlugin, IDataSourcePlugin):
         """初始化 Ashare 客户端"""
         try:
             # 导入本地 Ashare 模块
-            from .Ashare import get_price
+            from .ashare import get_price
             self._ashare_module = get_price
             
             # 测试连接
