@@ -10,6 +10,7 @@ ASCEND插件发现机制
 import importlib
 import importlib.util
 import logging
+import os
 import pkg_resources
 import sys
 from typing import Dict, List, Optional, Set, Any, Tuple, Type, TYPE_CHECKING
@@ -38,13 +39,16 @@ class PluginDiscovery:
         loaded_plugins: 已加载的插件实例
     """
     
-    def __init__(self, plugin_paths: Optional[List[str]] = None) -> None:
+    def __init__(self, plugin_paths: Optional[List[str]] = None,
+                 env_file_path: Optional[str] = None) -> None:
         """初始化插件发现器
         
         Args:
-            plugin_paths: 插件搜索路径列表
+            plugin_paths: 插件搜索路径列表（优先于环境变量中的路径）
+            env_file_path: 自定义.env文件路径，如果为None则自动搜索
         """
         self.plugin_paths = plugin_paths or []
+        self.env_file_path = env_file_path
         self._discovered_plugins: Dict[str, PluginInfo] = {}
         self._loaded_plugins: Dict[str, IPlugin] = {}
         self._dependency_graph: Dict[str, Set[str]] = {}
@@ -86,10 +90,30 @@ class PluginDiscovery:
         current_dir = Path(__file__).parent
         self.plugin_paths.append(str(current_dir))
         
-        # 添加用户级的插件目录
-        user_plugins = Path.home() / ".ascend" / "plugins"
-        if user_plugins.exists():
-            self.plugin_paths.append(str(user_plugins))
+        # 从环境变量读取额外的插件路径（优先从参数传入的路径）
+        # 首先检查是否已经有通过参数传入的路径
+        has_explicit_paths = len(self.plugin_paths) > 1  # 大于1是因为上面已经添加了当前目录
+        
+        # 从环境变量读取插件路径（支持.env文件和系统环境变量）
+        env_plugin_paths = get_env_var('ASCEND_PLUGIN_PATHS', '', self.env_file_path)
+        if env_plugin_paths:
+            for path in env_plugin_paths.split(os.pathsep):
+                if path.strip():
+                    plugin_path = Path(path.strip())
+                    if plugin_path.exists():
+                        # 如果已经有显式传入的路径，则不添加重复的路径
+                        path_str = str(plugin_path)
+                        if path_str not in self.plugin_paths:
+                            self.plugin_paths.append(path_str)
+                            logger.info(f"Added plugin path from environment: {plugin_path}")
+                        else:
+                            logger.debug(f"Plugin path already exists, skipping: {plugin_path}")
+        
+        # 添加用户级的插件目录（除非已经有显式传入的路径）
+        if not has_explicit_paths:
+            user_plugins = Path.home() / ".ascend" / "plugins"
+            if user_plugins.exists():
+                self.plugin_paths.append(str(user_plugins))
     
     def discover_plugins(self) -> Dict[str, PluginInfo]:
         """发现所有可用的插件

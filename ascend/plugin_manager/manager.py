@@ -314,6 +314,14 @@ class PluginManager(BasePluginManager):
         """
         return len(self._loaded_plugins)
     
+    def list_available_plugins(self) -> List[str]:
+        """List all available plugins (discovered but not necessarily loaded)
+        
+        Returns:
+            List of available plugin names
+        """
+        return list(self.discovery.discovered_plugins.keys())
+    
     def __enter__(self):
         """Context manager entry"""
         return self
