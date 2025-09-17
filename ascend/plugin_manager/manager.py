@@ -15,11 +15,11 @@ from typing import Dict, Any, List, Optional, Type
 from pathlib import Path
 from pydantic import ValidationError
 
-from .base import IPlugin, BasePlugin, PluginRegistry
-from .discovery import PluginDiscovery
-from .types import PluginInfo, PluginState, PluginStatus
-from ..core.exceptions import PluginError, PluginNotFoundError, PluginLoadError
-from ..core.types import Config
+from ascend.plugin_manager.base import IPlugin, BasePlugin, PluginRegistry
+from ascend.plugin_manager.discovery import PluginDiscovery
+from ascend.plugin_manager.types import PluginInfo, PluginState, PluginStatus
+from ascend.core.exceptions import PluginError, PluginNotFoundError, PluginLoadError
+from ascend.core.types import Config
 
 logger = logging.getLogger(__name__)
 

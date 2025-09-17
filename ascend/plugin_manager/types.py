@@ -7,7 +7,7 @@ from typing import List, Optional, Type
 from dataclasses import dataclass
 from pydantic import BaseModel
 from enum import Enum, auto
-from .base import IPlugin
+from ascend.plugin_manager.base import IPlugin
 
 class PluginState(Enum):
     """插件状态枚举

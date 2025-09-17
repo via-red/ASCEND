@@ -8,7 +8,7 @@
 from typing import Dict, Any, List, Optional
 import logging
 import time
-from abc import ABC
+
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -35,7 +35,7 @@ class EpisodeStats:
     end_time: Optional[float] = None
     metrics: Dict[str, Any] = field(default_factory=dict)
 
-class BaseMonitor(ABC):
+class BaseMonitor(IMonitor):
     """基础监控实现
     
     实现了IMonitor协议的基类，提供了监控的基础功能框架。

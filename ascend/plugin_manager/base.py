@@ -4,7 +4,7 @@ ASCEND插件基础类
 """
 
 from typing import Dict, Any, Optional, List, Type, TYPE_CHECKING
-from abc import ABC, abstractmethod
+
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 
 from ascend.core.protocols import IPlugin
@@ -14,8 +14,8 @@ from ascend.core.exceptions import PluginError
 if TYPE_CHECKING:
     from ascend.plugin_manager.manager import IPluginRegistry
 
-class BasePlugin(IPlugin, ABC):
-    """插件基础抽象类"""
+class BasePlugin(IPlugin):
+    """插件基础实现类"""
     
     def __init__(self, name: str, version: str, description: str = "",
                  author: str = "", license: str = "Apache 2.0"):
@@ -37,7 +37,6 @@ class BasePlugin(IPlugin, ABC):
         self.config: Optional[Dict[str, Any]] = None
         self._initialized = False
     
-    @abstractmethod
     def register(self, registry: 'IPluginRegistry') -> None:
         """注册插件到框架
         
@@ -47,7 +46,8 @@ class BasePlugin(IPlugin, ABC):
         Raises:
             PluginError: 注册失败
         """
-        pass
+        # 基础实现，子类可以重写
+        registry.register_plugin(self.name, self)
     
     def configure(self, config: Dict[str, Any]) -> None:
         """配置插件参数

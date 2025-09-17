@@ -13,7 +13,6 @@
 """
 
 from typing import Protocol, Any, Dict, List, Optional, Tuple
-from abc import abstractmethod
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
@@ -22,7 +21,6 @@ import numpy as np
 class IStrategyPlugin(Protocol):
     """策略插件协议 - 定义策略执行接口"""
     
-    @abstractmethod
     def execute(self, data: Any, **kwargs) -> Any:
         """执行策略
         
@@ -35,7 +33,6 @@ class IStrategyPlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_strategy_type(self) -> str:
         """获取策略类型
         
@@ -44,7 +41,6 @@ class IStrategyPlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_required_data_types(self) -> List[str]:
         """获取所需的数据类型
         
@@ -57,7 +53,6 @@ class IStrategyPlugin(Protocol):
 class IScoringStrategy(Protocol):
     """评分策略协议 - 定义评分计算接口"""
     
-    @abstractmethod
     def calculate_score(self, data: Any, **kwargs) -> Dict[str, float]:
         """计算股票评分
         
@@ -70,7 +65,6 @@ class IScoringStrategy(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_factor_weights(self) -> Dict[str, float]:
         """获取因子权重配置
         
@@ -79,7 +73,6 @@ class IScoringStrategy(Protocol):
         """
         ...
     
-    @abstractmethod
     def generate_signals(self, scores: Dict[str, float], **kwargs) -> Dict[str, str]:
         """生成交易信号
         
@@ -96,7 +89,6 @@ class IScoringStrategy(Protocol):
 class IFactorModel(Protocol):
     """因子模型协议 - 定义因子计算接口"""
     
-    @abstractmethod
     def calculate_factors(self, data: Any, **kwargs) -> Dict[str, Any]:
         """计算因子值
         
@@ -109,7 +101,6 @@ class IFactorModel(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_available_factors(self) -> List[str]:
         """获取可用的因子列表
         
@@ -118,7 +109,6 @@ class IFactorModel(Protocol):
         """
         ...
     
-    @abstractmethod
     def validate_factors(self, factors: Dict[str, Any]) -> bool:
         """验证因子数据
         

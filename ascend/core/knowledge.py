@@ -9,13 +9,13 @@ from typing import Dict, Any, List
 import logging
 import json
 import os
-from abc import ABC, abstractmethod
+
 
 from .protocols import IKnowledgeBase, Knowledge
 
 logger = logging.getLogger(__name__)
 
-class BaseKnowledgeBase(ABC):
+class BaseKnowledgeBase(IKnowledgeBase):
     """基础知识库实现
     
     实现了IKnowledgeBase协议的抽象基类，提供了知识管理的基础功能框架。
@@ -47,7 +47,7 @@ class BaseKnowledgeBase(ABC):
         """
         pass
     
-    @abstractmethod
+    
     def query(self, context: Dict[str, Any]) -> Knowledge:
         """查询知识
         

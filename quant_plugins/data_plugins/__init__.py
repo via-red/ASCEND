@@ -14,14 +14,12 @@
 """
 
 from typing import Protocol, Any, Dict, List, Optional
-from abc import abstractmethod
 from pydantic import BaseModel
 
 # 数据插件协议接口
 class IDataSourcePlugin(Protocol):
     """数据源插件协议 - 定义数据获取接口"""
     
-    @abstractmethod
     def fetch_data(self, symbol: str, start_date: str, end_date: str, **kwargs) -> Any:
         """获取股票数据
         
@@ -36,7 +34,6 @@ class IDataSourcePlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_available_symbols(self) -> List[str]:
         """获取可用的股票代码列表
         
@@ -45,7 +42,6 @@ class IDataSourcePlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_data_types(self) -> List[str]:
         """获取支持的数据类型
         
@@ -58,7 +54,6 @@ class IDataSourcePlugin(Protocol):
 class IDataProcessorPlugin(Protocol):
     """数据处理器插件协议 - 定义数据预处理接口"""
     
-    @abstractmethod
     def clean_data(self, raw_data: Any) -> Any:
         """数据清洗
         
@@ -70,7 +65,6 @@ class IDataProcessorPlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def handle_missing_values(self, data: Any, strategy: str = 'fill') -> Any:
         """处理缺失值
         
@@ -83,7 +77,6 @@ class IDataProcessorPlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def normalize_data(self, data: Any) -> Any:
         """数据标准化
         
@@ -95,7 +88,6 @@ class IDataProcessorPlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def extract_features(self, data: Any) -> Any:
         """特征工程
         
@@ -111,7 +103,6 @@ class IDataProcessorPlugin(Protocol):
 class IDataStoragePlugin(Protocol):
     """数据存储插件协议 - 定义数据存储接口"""
     
-    @abstractmethod
     def save_data(self, data: Any, key: str, **kwargs) -> bool:
         """保存数据
         
@@ -125,7 +116,6 @@ class IDataStoragePlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def load_data(self, key: str, **kwargs) -> Any:
         """加载数据
         
@@ -138,7 +128,6 @@ class IDataStoragePlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def delete_data(self, key: str, **kwargs) -> bool:
         """删除数据
         
@@ -151,7 +140,6 @@ class IDataStoragePlugin(Protocol):
         """
         ...
     
-    @abstractmethod
     def list_keys(self, pattern: str = "*") -> List[str]:
         """列出数据键
         

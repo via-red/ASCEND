@@ -13,7 +13,6 @@
 """
 
 from typing import Protocol, Any, Dict, List, Optional, Tuple
-from abc import abstractmethod
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
@@ -23,7 +22,6 @@ from datetime import datetime
 class IBacktestEngine(Protocol):
     """回测引擎协议 - 定义回测执行接口"""
     
-    @abstractmethod
     def run_backtest(self, strategy: Any, data: Any, **kwargs) -> Dict[str, Any]:
         """运行回测
         
@@ -37,7 +35,6 @@ class IBacktestEngine(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_backtest_parameters(self) -> Dict[str, Any]:
         """获取回测参数
         
@@ -46,7 +43,6 @@ class IBacktestEngine(Protocol):
         """
         ...
     
-    @abstractmethod
     def generate_report(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """生成回测报告
         
@@ -62,8 +58,7 @@ class IBacktestEngine(Protocol):
 class IPerformanceEvaluator(Protocol):
     """性能评估协议 - 定义性能指标计算接口"""
     
-    @abstractmethod
-    def calculate_metrics(self, equity_curve: pd.Series, 
+    def calculate_metrics(self, equity_curve: pd.Series,
                          trades: List[Dict], **kwargs) -> Dict[str, float]:
         """计算性能指标
         
@@ -77,7 +72,6 @@ class IPerformanceEvaluator(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_available_metrics(self) -> List[str]:
         """获取可用的性能指标
         
@@ -86,8 +80,7 @@ class IPerformanceEvaluator(Protocol):
         """
         ...
     
-    @abstractmethod
-    def compare_with_benchmark(self, equity_curve: pd.Series, 
+    def compare_with_benchmark(self, equity_curve: pd.Series,
                               benchmark: pd.Series, **kwargs) -> Dict[str, Any]:
         """与基准对比
         
@@ -105,7 +98,6 @@ class IPerformanceEvaluator(Protocol):
 class IRiskManager(Protocol):
     """风险管理协议 - 定义风险控制接口"""
     
-    @abstractmethod
     def validate_trade(self, trade: Dict, portfolio: Dict, **kwargs) -> bool:
         """验证交易是否合规
         
@@ -119,7 +111,6 @@ class IRiskManager(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_risk_limits(self) -> Dict[str, float]:
         """获取风险限制
         
@@ -128,7 +119,6 @@ class IRiskManager(Protocol):
         """
         ...
     
-    @abstractmethod
     def calculate_risk_metrics(self, portfolio: Dict, **kwargs) -> Dict[str, float]:
         """计算风险指标
         

@@ -8,13 +8,13 @@
 from typing import Dict, Any, List
 import logging
 import numpy as np
-from abc import ABC, abstractmethod
+
 
 from .protocols import IFeatureExtractor, Feature
 
 logger = logging.getLogger(__name__)
 
-class BaseFeatureExtractor(ABC):
+class BaseFeatureExtractor(IFeatureExtractor):
     """基础特征提取器实现
     
     实现了IFeatureExtractor协议的抽象基类，提供了特征提取的基础功能框架。
@@ -46,7 +46,7 @@ class BaseFeatureExtractor(ABC):
         """
         pass
     
-    @abstractmethod
+    
     def _compute_feature_dim(self) -> int:
         """计算特征维度
         
@@ -55,13 +55,13 @@ class BaseFeatureExtractor(ABC):
         """
         raise NotImplementedError
     
-    @abstractmethod
-    def extract(self, raw_data: Any) -> Feature:
+    
+    def extract_features(self, raw_data: Any) -> Feature:
         """提取特征
-        
+
         Args:
             raw_data: 原始数据
-            
+
         Returns:
             提取的特征
         """
@@ -148,3 +148,14 @@ class BaseFeatureExtractor(ABC):
         # 更新特征维度
         self.feature_dim = self._compute_feature_dim()
         logger.info(f"Updated feature extractor {self.name} config")
+    
+    def extract_state(self, raw_data: Any) -> State:
+        """提取状态表示
+
+        Args:
+            raw_data: 原始数据
+
+        Returns:
+            状态表示
+        """
+        raise NotImplementedError

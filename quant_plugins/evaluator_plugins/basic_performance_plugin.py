@@ -10,6 +10,7 @@ import pandas as pd
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
 from .core_performance_evaluator import CorePerformanceEvaluator
+from ..backtest_plugins import IPerformanceEvaluator
 
 
 class BasicPerformanceEvaluatorConfig(BaseModel):
@@ -28,7 +29,7 @@ class BasicPerformanceEvaluatorConfig(BaseModel):
         return v
 
 
-class BasicPerformanceEvaluatorPlugin(BasePlugin):
+class BasicPerformanceEvaluatorPlugin(BasePlugin, IPerformanceEvaluator):
     """基础性能评估器插件实现"""
     
     def __init__(self):

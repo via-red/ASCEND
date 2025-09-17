@@ -8,7 +8,6 @@
 from typing import List, Dict, Any, Optional
 import json
 import os
-from abc import ABC, abstractmethod
 import logging
 
 from .protocols import IAgent, State, Action, Knowledge, Experience
@@ -16,7 +15,7 @@ from .types import PolicyType
 
 logger = logging.getLogger(__name__)
 
-class BaseAgent(ABC):
+class BaseAgent(IAgent):
     """基础智能体实现
     
     实现了IAgent协议的抽象基类，提供了智能体的基础功能框架。
@@ -76,7 +75,6 @@ class BaseAgent(ABC):
         metrics = self.policy.update(experiences)
         return metrics
     
-    @abstractmethod
     def process_observation(self, raw_observation: Any) -> State:
         """处理原始观察数据
         
@@ -88,7 +86,6 @@ class BaseAgent(ABC):
         """
         raise NotImplementedError
     
-    @abstractmethod    
     def explain(self, state: State, action: Action) -> str:
         """解释当前决策
         

@@ -7,7 +7,7 @@
 
 from typing import Dict, Any
 import logging
-from abc import ABC, abstractmethod
+
 
 from .protocols import ISafetyGuard, State, Action
 
@@ -45,7 +45,7 @@ class BaseSafetyGuard(ABC):
         """
         pass
     
-    @abstractmethod
+    
     def validate_action(self, state: State, action: Action) -> bool:
         """验证动作的安全性
         

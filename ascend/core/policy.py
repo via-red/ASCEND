@@ -9,13 +9,13 @@ from typing import List, Dict, Any
 import logging
 import torch
 import numpy as np
-from abc import ABC, abstractmethod
+
 
 from .protocols import IPolicy, State, Action, Experience
 
 logger = logging.getLogger(__name__)
 
-class BasePolicy(ABC):
+class BasePolicy(IPolicy):
     """基础策略实现
     
     实现了IPolicy协议的抽象基类，提供了策略的基础功能框架。
@@ -47,7 +47,7 @@ class BasePolicy(ABC):
         """
         pass
     
-    @abstractmethod
+    
     def get_action(self, state: State) -> Action:
         """根据状态选择动作
         
@@ -59,7 +59,7 @@ class BasePolicy(ABC):
         """
         raise NotImplementedError
     
-    @abstractmethod
+    
     def update(self, experiences: List[Experience]) -> Dict[str, Any]:
         """更新策略参数
         

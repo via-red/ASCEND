@@ -13,7 +13,6 @@
 """
 
 from typing import Protocol, Any, Dict, List, Optional, Tuple
-from abc import abstractmethod
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
@@ -23,7 +22,6 @@ from datetime import datetime
 class ITrader(Protocol):
     """交易执行协议 - 定义交易执行接口"""
     
-    @abstractmethod
     def execute_order(self, order: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """执行交易订单
         
@@ -36,7 +34,6 @@ class ITrader(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_position(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """获取持仓信息
         
@@ -49,7 +46,6 @@ class ITrader(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_account_info(self, **kwargs) -> Dict[str, Any]:
         """获取账户信息
         
@@ -65,7 +61,6 @@ class ITrader(Protocol):
 class IMonitor(Protocol):
     """实时监控协议 - 定义监控接口"""
     
-    @abstractmethod
     def monitor_performance(self, metrics: Dict[str, Any], **kwargs) -> None:
         """监控性能指标
         
@@ -75,7 +70,6 @@ class IMonitor(Protocol):
         """
         ...
     
-    @abstractmethod
     def detect_anomalies(self, data: Any, **kwargs) -> List[Dict[str, Any]]:
         """检测异常情况
         
@@ -88,7 +82,6 @@ class IMonitor(Protocol):
         """
         ...
     
-    @abstractmethod
     def generate_alerts(self, anomalies: List[Dict[str, Any]], **kwargs) -> List[Dict[str, Any]]:
         """生成警报
         
@@ -105,7 +98,6 @@ class IMonitor(Protocol):
 class IRiskController(Protocol):
     """风险控制器协议 - 定义风险控制接口"""
     
-    @abstractmethod
     def check_risk_limits(self, portfolio: Dict[str, Any], **kwargs) -> Dict[str, bool]:
         """检查风险限制
         
@@ -118,7 +110,6 @@ class IRiskController(Protocol):
         """
         ...
     
-    @abstractmethod
     def enforce_risk_rules(self, portfolio: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """执行风险规则
         
@@ -131,7 +122,6 @@ class IRiskController(Protocol):
         """
         ...
     
-    @abstractmethod
     def get_risk_status(self, **kwargs) -> Dict[str, Any]:
         """获取风险状态
         

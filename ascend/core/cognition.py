@@ -7,13 +7,13 @@
 
 from typing import List, Dict, Any
 import logging
-from abc import ABC, abstractmethod
 
 from .protocols import ICognition, State, Action
 
+
 logger = logging.getLogger(__name__)
 
-class BaseCognition(ABC):
+class BaseCognition(ICognition):
     """基础认知实现
     
     实现了ICognition协议的抽象基类，提供了认知处理的基础功能框架。
@@ -43,7 +43,7 @@ class BaseCognition(ABC):
         """
         pass
     
-    @abstractmethod
+    
     def process_state(self, raw_state: Any) -> State:
         """处理和理解原始状态
         
@@ -55,7 +55,7 @@ class BaseCognition(ABC):
         """
         raise NotImplementedError
     
-    @abstractmethod
+    
     def generate_actions(self, state: State) -> List[Action]:
         """生成候选动作
         
@@ -67,7 +67,7 @@ class BaseCognition(ABC):
         """
         raise NotImplementedError
     
-    @abstractmethod
+    
     def explain_decision(self, state: State, action: Action) -> str:
         """解释决策原因
         

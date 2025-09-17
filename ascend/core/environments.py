@@ -7,14 +7,13 @@
 
 from typing import Any, Dict, Tuple, Optional
 import logging
-from abc import ABC, abstractmethod
 import numpy as np
 
 from .protocols import IEnvironment, State, Action, Reward, Info
 
 logger = logging.getLogger(__name__)
 
-class BaseEnvironment(ABC):
+class BaseEnvironment(IEnvironment):
     """基础环境实现
     
     实现了IEnvironment协议的抽象基类，提供了环境的基础功能框架。
@@ -46,7 +45,7 @@ class BaseEnvironment(ABC):
         """
         pass
     
-    @abstractmethod
+    
     def reset(self) -> State:
         """重置环境到初始状态
         
@@ -55,7 +54,6 @@ class BaseEnvironment(ABC):
         """
         raise NotImplementedError
     
-    @abstractmethod
     def step(self, action: Action) -> Tuple[State, Reward, bool, Info]:
         """执行动作并返回结果
         
@@ -87,7 +85,7 @@ class BaseEnvironment(ABC):
         pass
     
     @property
-    @abstractmethod
+    
     def observation_space(self) -> Any:
         """获取观察空间定义
         
@@ -97,7 +95,7 @@ class BaseEnvironment(ABC):
         raise NotImplementedError
     
     @property
-    @abstractmethod
+    
     def action_space(self) -> Any:
         """获取动作空间定义
         

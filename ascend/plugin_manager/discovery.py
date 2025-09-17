@@ -15,16 +15,18 @@ import pkg_resources
 import sys
 from typing import Dict, List, Optional, Set, Any, Tuple, Type, TYPE_CHECKING
 
+from ascend.plugin_manager.env_utils import get_env_var
+
 if TYPE_CHECKING:
     from .manager import PluginManager
 from pathlib import Path
 from dataclasses import dataclass
 from pydantic import BaseModel, Field, ValidationError
 
-from .base import IPlugin, BasePlugin
-from .types import PluginInfo
-from ..core.exceptions import PluginError
-from ..core.types import Config
+from ascend.plugin_manager.base import IPlugin, BasePlugin
+from ascend.plugin_manager.types import PluginInfo
+from ascend.core.exceptions import PluginError
+from ascend.core.types import Config
 
 logger = logging.getLogger(__name__)
 

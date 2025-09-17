@@ -16,10 +16,9 @@ from stable_baselines3 import PPO, A2C, DQN, SAC, TD3
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from ..core.protocols import IAgent, IEnvironment, IPolicy, State, Action, Experience
-from ..core.types import PolicyType
-from .base import BasePlugin, IPlugin
-
+from ascend.core.protocols import IAgent, IEnvironment, IPluginRegistry, IPolicy, State, Action, Experience
+from ascend.core.types import PolicyType
+from ascend.plugin_manager.base import BasePlugin, IPlugin,register_builtin_plugin
 logger = logging.getLogger(__name__)
 
 # 支持的 SB3 算法映射
@@ -168,7 +167,7 @@ class SB3PolicyWrapper(IPolicy):
         """
         self.model = self.model.load(path)
 
-from .base import register_builtin_plugin
+
 
 @register_builtin_plugin
 class SB3Plugin(BasePlugin):
@@ -269,15 +268,29 @@ class SB3Plugin(BasePlugin):
         class SB3Agent(BaseAgent):
             """SB3代理类
             """
-            def process_observation(self, observation, **kwargs):
-                """处理环境观察
+            def process_observation(self, raw_observation: Any) -> State:
+                """处理原始观察数据
+                
+                Args:
+                    raw_observation: 原始观察数据
+                    
+                Returns:
+                    处理后的状态
                 """
-                return observation
+                # 对于SB3，通常直接返回观察数据作为状态
+                return raw_observation
             
-            def explain(self, **kwargs):
-                """解释代理的决策
+            def explain(self, state: State, action: Action) -> str:
+                """解释当前决策
+                
+                Args:
+                    state: 当前状态
+                    action: 选择的动作
+                    
+                Returns:
+                    决策解释
                 """
-                return {"explanation": "SB3代理使用神经网络策略进行决策"}
+                return f"SB3代理使用{self.config.get('algorithm', 'unknown')}算法，基于当前状态选择了动作{action}"
         
         return SB3Agent(
             name=f"sb3_{self.config.algorithm}_agent",
@@ -321,11 +334,5 @@ class SB3Plugin(BasePlugin):
             配置模式类
         """
         return SB3PluginConfig
-
-from pydantic import BaseModel, Field, PositiveInt
-
-from ascend.plugin_manager.base import BasePlugin
-from ascend.core.protocols import IPluginRegistry
-from ascend.core.exceptions import PluginError
 
 

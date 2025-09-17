@@ -13,9 +13,8 @@ ASCEND核心协议定义
 
 from __future__ import annotations
 from typing import Protocol, Any, Dict, List, Tuple, Optional, Union, TYPE_CHECKING, Type
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, runtime_checkable
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -435,6 +434,7 @@ class IRewardFunction(Protocol):
 
 
 
+@runtime_checkable
 class IPlugin(Protocol):
     """插件协议 - 定义扩展组件接口"""
     
