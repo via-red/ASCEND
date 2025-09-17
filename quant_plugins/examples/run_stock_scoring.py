@@ -21,6 +21,8 @@ from dotenv import load_dotenv
 
 # 添加父目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 添加当前目录到Python路径，确保相对导入正常工作
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ascend.plugins.manager import PluginManager
 from quant_plugins import get_plugin_class

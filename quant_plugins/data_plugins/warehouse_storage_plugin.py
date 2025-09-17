@@ -10,7 +10,7 @@ Warehouse 数据存储插件
 """
 
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field,field_validator
 import pandas as pd
 import numpy as np
 import json
@@ -34,25 +34,25 @@ class WarehouseStoragePluginConfig(BaseModel):
     max_file_size: int = Field(1024 * 1024 * 100, description="最大文件大小(字节)")
     enable_indexing: bool = Field(True, description="是否启用索引")
     
-    @validator('storage_format')
+    @field_validator('storage_format')
     def validate_storage_format(cls, v):
         valid_formats = ['parquet', 'csv', 'pickle', 'feather']
         if v not in valid_formats:
             raise ValueError(f'Storage format must be one of: {valid_formats}')
         return v
     
-    @validator('compression')
+    @field_validator('compression')
     def validate_compression(cls, v):
         valid_compressions = ['snappy', 'gzip', 'none']
         if v not in valid_compressions:
             raise ValueError(f'Compression must be one of: {valid_compressions}')
         return v
     
-    @validator('storage_path')
+    @field_validator('storage_path')
     def validate_storage_path(cls, v):
         path = Path(v)
-        if not path.parent.exists():
-            raise ValueError(f'Parent directory does not exist: {path.parent}')
+        # 自动创建父目录，而不是抛出错误
+        path.parent.mkdir(parents=True, exist_ok=True)
         return str(path)
 
 

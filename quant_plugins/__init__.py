@@ -41,6 +41,12 @@ from .execution_plugins import (
     RealtimeMonitorPlugin
 )
 
+# 导出工具插件
+from .tools import (
+    PerformanceEvaluatorPlugin,
+    IPerformanceTools
+)
+
 __all__ = [
     # 数据插件
     'TushareDataPlugin',
@@ -61,7 +67,11 @@ __all__ = [
     
     # 执行插件
     'SimTraderPlugin',
-    'RealtimeMonitorPlugin'
+    'RealtimeMonitorPlugin',
+    
+    # 工具插件
+    'PerformanceEvaluatorPlugin',
+    'IPerformanceTools'
 ]
 
 # 便捷函数
@@ -89,6 +99,9 @@ def get_available_plugins() -> Dict[str, List[str]]:
         'execution_plugins': [
             'sim_trader',
             'realtime_monitor'
+        ],
+        'tools': [
+            # 性能工具已移动到 evaluator_plugins 目录
         ]
     }
 
@@ -111,7 +124,8 @@ def get_plugin_class(plugin_name: str) -> Optional[Type]:
         'daily_backtest_engine': DailyBacktestEnginePlugin,
         'performance_evaluator': PerformanceEvaluatorPlugin,
         'sim_trader': SimTraderPlugin,
-        'realtime_monitor': RealtimeMonitorPlugin
+        'realtime_monitor': RealtimeMonitorPlugin,
+        # 'performance_tools': PerformanceEvaluatorPlugin  # 已移动到 evaluator_plugins
     }
     
     return plugin_map.get(plugin_name)

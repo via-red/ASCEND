@@ -1,22 +1,16 @@
 
 """
-性能评估和监控工具
-提供额外的性能分析、可视化和监控功能
-
-功能:
-- 高级性能指标计算
-- 结果可视化和图表生成
-- 基准对比分析
-- 风险报告生成
-- 实时监控面板
+核心性能评估器
+提供统一的性能指标计算、可视化和报告生成功能
 """
 
+from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from scipy import stats
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -25,15 +19,26 @@ plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
 
-class PerformanceAnalyzer:
-    """性能分析器 - 提供高级性能指标和可视化"""
+class CorePerformanceEvaluator:
+    """核心性能评估器 - 提供统一的性能指标计算和可视化功能"""
     
-    def __init__(self):
+    def __init__(self, risk_free_rate: float = 0.02):
+        self.risk_free_rate = risk_free_rate
         self.metrics_history = []
     
-    def calculate_advanced_metrics(self, equity_curve: pd.Series, 
-                                 trades: List[Dict]) -> Dict[str, Any]:
-        """计算高级性能指标"""
+    def calculate_metrics(self, equity_curve: pd.Series, 
+                         trades: Optional[List[Dict]] = None,
+                         include_advanced: bool = True) -> Dict[str, Any]:
+        """计算性能指标
+        
+        Args:
+            equity_curve: 净值曲线
+            trades: 交易记录列表，可选
+            include_advanced: 是否包含高级指标
+            
+        Returns:
+            性能指标字典
+        """
         metrics = {}
         
         if equity_curve.empty:
@@ -54,13 +59,12 @@ class PerformanceAnalyzer:
         
         # 4. 交易相关指标
         if trades:
-            metrics.update(self._calculate_trade_based_metrics(trades))
+            metrics.update(self._calculate_trade_metrics(trades))
         
-        # 5. 时间相关指标
-        metrics.update(self._calculate_time_based_metrics(daily_returns))
-        
-        # 6. 分布指标
-        metrics.update(self._calculate_distribution_metrics(daily_returns))
+        # 5. 高级指标（可选）
+        if include_advanced:
+            metrics.update(self._calculate_time_based_metrics(daily_returns))
+            metrics.update(self._calculate_distribution_metrics(daily_returns))
         
         return metrics
     
@@ -85,8 +89,8 @@ class PerformanceAnalyzer:
         return {
             'volatility': daily_returns.std() * np.sqrt(252),
             'downside_volatility': self._calculate_downside_volatility(daily_returns),
-            'max_drawdown': drawdowns.max(),
-            'avg_drawdown': drawdowns.mean(),
+            'max_drawdown': drawdowns.max() if not drawdowns.empty else 0,
+            'avg_drawdown': drawdowns.mean() if not drawdowns.empty else 0,
             'drawdown_duration': self._calculate_avg_drawdown_duration(drawdowns),
             'value_at_risk_95': self._calculate_var(daily_returns, 0.95),
             'conditional_var_95': self._calculate_cvar(daily_returns, 0.95),
@@ -95,18 +99,18 @@ class PerformanceAnalyzer:
     
     def _calculate_risk_adjusted_metrics(self, daily_returns: pd.Series) -> Dict[str, float]:
         """计算风险调整后收益指标"""
-        risk_free_rate = 0.02 / 252  # 日化无风险利率
+        risk_free_rate_daily = self.risk_free_rate / 252
         
         return {
-            'sharpe_ratio': self._calculate_sharpe_ratio(daily_returns, risk_free_rate),
-            'sortino_ratio': self._calculate_sortino_ratio(daily_returns, risk_free_rate),
+            'sharpe_ratio': self._calculate_sharpe_ratio(daily_returns, risk_free_rate_daily),
+            'sortino_ratio': self._calculate_sortino_ratio(daily_returns, risk_free_rate_daily),
             'calmar_ratio': self._calculate_calmar_ratio(daily_returns),
-            'omega_ratio': self._calculate_omega_ratio(daily_returns, risk_free_rate),
-            'treynor_ratio': self._calculate_treynor_ratio(daily_returns, risk_free_rate),
+            'omega_ratio': self._calculate_omega_ratio(daily_returns, risk_free_rate_daily),
+            'treynor_ratio': self._calculate_treynor_ratio(daily_returns, risk_free_rate_daily),
             'information_ratio': self._calculate_information_ratio(daily_returns)
         }
     
-    def _calculate_trade_based_metrics(self, trades: List[Dict]) -> Dict[str, float]:
+    def _calculate_trade_metrics(self, trades: List[Dict]) -> Dict[str, float]:
         """计算交易相关指标"""
         if not trades:
             return {}
@@ -114,15 +118,22 @@ class PerformanceAnalyzer:
         profitable_trades = [t for t in trades if t.get('profit_loss', 0) > 0]
         losing_trades = [t for t in trades if t.get('profit_loss', 0) < 0]
         
-        win_rate = len(profitable_trades) / len(trades)
+        win_rate = len(profitable_trades) / len(trades) if trades else 0
         avg_profit = np.mean([t.get('profit_loss', 0) for t in profitable_trades]) if profitable_trades else 0
         avg_loss = np.mean([t.get('profit_loss', 0) for t in losing_trades]) if losing_trades else 0
         
         return {
+            'total_trades': len(trades),
+            'winning_trades': len(profitable_trades),
+            'losing_trades': len(losing_trades),
             'win_rate': win_rate,
             'profit_factor': abs(avg_profit * len(profitable_trades) / 
                                (avg_loss * len(losing_trades))) if losing_trades else float('inf'),
-            'avg_profit_per_trade': np.mean([t.get('profit_loss', 0) for t in trades]),
+            'avg_profit': avg_profit,
+            'avg_loss': avg_loss,
+            'largest_win': max([t.get('profit_loss', 0) for t in profitable_trades]) if profitable_trades else 0,
+            'largest_loss': min([t.get('profit_loss', 0) for t in losing_trades]) if losing_trades else 0,
+            'avg_trade_return': np.mean([t.get('profit_loss', 0) for t in trades]) if trades else 0,
             'profit_ratio': avg_profit / abs(avg_loss) if avg_loss != 0 else float('inf'),
             'expectancy': (win_rate * avg_profit) - ((1 - win_rate) * abs(avg_loss)),
             'k_ratio': self._calculate_k_ratio(trades)
@@ -139,8 +150,6 @@ class PerformanceAnalyzer:
     
     def _calculate_distribution_metrics(self, daily_returns: pd.Series) -> Dict[str, float]:
         """计算分布相关指标"""
-        from scipy import stats
-        
         return {
             'skewness': daily_returns.skew(),
             'kurtosis': daily_returns.kurtosis(),
@@ -149,6 +158,7 @@ class PerformanceAnalyzer:
             'tail_ratio': self._calculate_tail_ratio(daily_returns)
         }
     
+    # 辅助计算方法
     def _annualize_return(self, total_return: float, days: int) -> float:
         """年化收益率"""
         years = days / 252
@@ -169,6 +179,9 @@ class PerformanceAnalyzer:
     
     def _calculate_avg_drawdown_duration(self, drawdowns: pd.Series) -> float:
         """计算平均回撤持续时间"""
+        if drawdowns.empty:
+            return 0
+        
         in_drawdown = drawdowns < 0
         durations = []
         current_duration = 0
@@ -282,7 +295,73 @@ class PerformanceAnalyzer:
         negative_tail = returns.quantile(0.05)
         return abs(positive_tail / negative_tail) if negative_tail != 0 else float('inf')
     
-    def generate_performance_report(self, metrics: Dict[str, Any], output_path: str = None) -> str:
+    def compare_with_benchmark(self, equity_curve: pd.Series,
+                              benchmark: pd.Series) -> Dict[str, Any]:
+        """与基准对比分析"""
+        try:
+            if equity_curve.empty or benchmark.empty:
+                return {
+                    'outperformance': 0.0,
+                    'correlation': 0.0,
+                    'beta': 1.0,
+                    'alpha': 0.0,
+                    'error': 'Empty data provided'
+                }
+            
+            # 确保时间索引对齐
+            aligned_data = pd.DataFrame({
+                'strategy': equity_curve,
+                'benchmark': benchmark
+            }).dropna()
+            
+            if len(aligned_data) < 2:
+                return {
+                    'outperformance': 0.0,
+                    'correlation': 0.0,
+                    'beta': 1.0,
+                    'alpha': 0.0,
+                    'error': 'Insufficient data for comparison'
+                }
+            
+            strategy_returns = aligned_data['strategy'].pct_change().dropna()
+            benchmark_returns = aligned_data['benchmark'].pct_change().dropna()
+            
+            # 计算超额收益
+            outperformance = (aligned_data['strategy'].iloc[-1] / aligned_data['strategy'].iloc[0] - 1) - \
+                           (aligned_data['benchmark'].iloc[-1] / aligned_data['benchmark'].iloc[0] - 1)
+            
+            # 计算相关性
+            correlation = strategy_returns.corr(benchmark_returns)
+            
+            # 计算Beta (市场风险暴露)
+            covariance = np.cov(strategy_returns, benchmark_returns)[0, 1]
+            benchmark_variance = np.var(benchmark_returns)
+            beta = covariance / benchmark_variance if benchmark_variance != 0 else 1.0
+            
+            # 计算Alpha (超额收益)
+            risk_free_rate_daily = self.risk_free_rate / 252
+            alpha = np.mean(strategy_returns - risk_free_rate_daily) - beta * np.mean(benchmark_returns - risk_free_rate_daily)
+            
+            return {
+                'outperformance': outperformance,
+                'correlation': correlation,
+                'beta': beta,
+                'alpha': alpha,
+                'tracking_error': np.std(strategy_returns - benchmark_returns),
+                'information_ratio': (np.mean(strategy_returns - benchmark_returns) /
+                                    np.std(strategy_returns - benchmark_returns)) if np.std(strategy_returns - benchmark_returns) != 0 else 0
+            }
+            
+        except Exception as e:
+            return {
+                'outperformance': 0.0,
+                'correlation': 0.0,
+                'beta': 1.0,
+                'alpha': 0.0,
+                'error': str(e)
+            }
+    
+    def generate_performance_report(self, metrics: Dict[str, Any], output_path: Optional[str] = None) -> str:
         """生成性能报告"""
         report = [
             "📊 量化策略性能报告",
@@ -321,9 +400,9 @@ class PerformanceAnalyzer:
         
         return report_text
     
-    def plot_performance_charts(self, equity_curve: pd.Series, 
-                              metrics: Dict[str, Any], 
-                              output_path: str = None):
+    def plot_performance_charts(self, equity_curve: pd.Series,
+                              metrics: Dict[str, Any],
+                              output_path: Optional[str] = None):
         """绘制性能图表"""
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
         fig.suptitle('量化策略性能分析', fontsize=16, fontweight='bold')
@@ -363,4 +442,3 @@ class PerformanceAnalyzer:
             plt.close()
         else:
             plt.show()
-# 性能分析工具类结束

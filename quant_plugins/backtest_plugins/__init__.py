@@ -144,7 +144,7 @@ class IRiskManager(Protocol):
 
 # 导出插件类 (将在具体实现文件中定义)
 from .daily_backtest_engine_plugin import DailyBacktestEnginePlugin
-from .performance_evaluator_plugin import PerformanceEvaluatorPlugin
+# 性能评估器已移动到 evaluator_plugins 目录
 
 __all__ = [
     # 协议接口

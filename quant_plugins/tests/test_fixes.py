@@ -75,8 +75,9 @@ def test_register_methods():
                 from quant_plugins.backtest_plugins.daily_backtest_engine_plugin import DailyBacktestEnginePlugin
                 plugin_class = DailyBacktestEnginePlugin
             elif module_name == 'backtest_plugins' and plugin_name == 'performance_evaluator':
-                from quant_plugins.backtest_plugins.performance_evaluator_plugin import PerformanceEvaluatorPlugin
-                plugin_class = PerformanceEvaluatorPlugin
+                # 性能评估器已移动到 evaluator_plugins 目录
+                from quant_plugins.evaluator_plugins.basic_performance_plugin import BasicPerformanceEvaluatorPlugin
+                plugin_class = BasicPerformanceEvaluatorPlugin
             elif module_name == 'execution_plugins' and plugin_name == 'sim_trader':
                 from quant_plugins.execution_plugins.sim_trader_plugin import SimTraderPlugin
                 plugin_class = SimTraderPlugin
@@ -151,9 +152,9 @@ def test_performance_evaluator():
     print("\n🧪 测试性能评估器改进...")
     
     try:
-        from quant_plugins.backtest_plugins.performance_evaluator_plugin import PerformanceEvaluatorPlugin
+        from quant_plugins.evaluator_plugins.basic_performance_plugin import BasicPerformanceEvaluatorPlugin
         
-        plugin = PerformanceEvaluatorPlugin()
+        plugin = BasicPerformanceEvaluatorPlugin()
         
         # 测试基准对比方法
         # 创建示例数据
