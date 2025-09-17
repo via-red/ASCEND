@@ -7,6 +7,13 @@ import asyncio
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import sys
+import os
+
+# 添加父目录到 Python 路径，确保可以导入 quant_plugins 模块
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
 def test_multi_factor_model_plugin():
     """测试多因子模型插件"""
@@ -60,8 +67,24 @@ def test_register_methods():
     success_count = 0
     for module_name, plugin_name in plugins_to_test:
         try:
-            module = __import__(f'quant_plugins.{module_name}', fromlist=[plugin_name])
-            plugin_class = getattr(module, f'{plugin_name.capitalize()}Plugin')
+            # 直接导入具体的插件类
+            if module_name == 'data_plugins' and plugin_name == 'warehouse_storage':
+                from quant_plugins.data_plugins.warehouse_storage_plugin import WarehouseStoragePlugin
+                plugin_class = WarehouseStoragePlugin
+            elif module_name == 'backtest_plugins' and plugin_name == 'daily_backtest_engine':
+                from quant_plugins.backtest_plugins.daily_backtest_engine_plugin import DailyBacktestEnginePlugin
+                plugin_class = DailyBacktestEnginePlugin
+            elif module_name == 'backtest_plugins' and plugin_name == 'performance_evaluator':
+                from quant_plugins.backtest_plugins.performance_evaluator_plugin import PerformanceEvaluatorPlugin
+                plugin_class = PerformanceEvaluatorPlugin
+            elif module_name == 'execution_plugins' and plugin_name == 'sim_trader':
+                from quant_plugins.execution_plugins.sim_trader_plugin import SimTraderPlugin
+                plugin_class = SimTraderPlugin
+            elif module_name == 'execution_plugins' and plugin_name == 'realtime_monitor':
+                from quant_plugins.execution_plugins.realtime_monitor_plugin import RealtimeMonitorPlugin
+                plugin_class = RealtimeMonitorPlugin
+            else:
+                raise ImportError(f"Unknown plugin: {module_name}.{plugin_name}")
             
             plugin = plugin_class()
             
@@ -90,6 +113,7 @@ def test_register_methods():
             plugin.register(registry)
             
             success_count += 1
+            print(f"   ✅ {plugin_name} 注册测试通过")
             
         except Exception as e:
             print(f"   ❌ {plugin_name} 注册测试失败: {e}")

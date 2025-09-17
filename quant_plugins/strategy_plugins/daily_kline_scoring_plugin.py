@@ -34,7 +34,7 @@ class DailyKlineScoringPluginConfig(BaseModel):
         },
         description="因子权重配置"
     )
-    scoring_threshold: float = Field(0.65, description="评分阈值")
+    scoring_threshold: float = Field(65.0, description="评分阈值 (0-100分范围)")
     min_data_points: int = Field(20, description="最小数据点数")
     enable_dynamic_weights: bool = Field(True, description="是否启用动态权重")
     signal_generation: bool = Field(True, description="是否生成交易信号")
@@ -48,8 +48,8 @@ class DailyKlineScoringPluginConfig(BaseModel):
     
     @field_validator('scoring_threshold')
     def validate_scoring_threshold(cls, v):
-        if not 0 <= v <= 1:
-            raise ValueError('Scoring threshold must be between 0 and 1')
+        if not 0 <= v <= 100:
+            raise ValueError('Scoring threshold must be between 0 and 100')
         return v
 
 
@@ -142,7 +142,7 @@ class DailyKlineScoringPlugin(BasePlugin, IScoringStrategy, IStrategyPlugin):
             # 计算所有因子
             factors = self._calculate_all_factors(data)
             
-            # 计算综合评分
+            # 计算综合评分 (0-100分范围)
             total_score = 0.0
             factor_scores = {}
             
@@ -150,11 +150,12 @@ class DailyKlineScoringPlugin(BasePlugin, IScoringStrategy, IStrategyPlugin):
                 if factor_name in self._current_weights:
                     # 标准化因子值到0-1范围
                     normalized_value = self._normalize_factor(factor_value, factor_name)
-                    weighted_score = normalized_value * self._current_weights[factor_name]
+                    # 将加权得分转换为0-100分范围
+                    weighted_score = normalized_value * self._current_weights[factor_name] * 100
                     factor_scores[factor_name] = weighted_score
                     total_score += weighted_score
             
-            # 返回评分结果
+            # 返回评分结果 (0-100分范围)
             return {
                 'total_score': total_score,
                 'factor_scores': factor_scores,
@@ -329,7 +330,7 @@ class DailyKlineScoringPlugin(BasePlugin, IScoringStrategy, IStrategyPlugin):
         Returns:
             交易信号字典
         """
-        threshold = kwargs.get('threshold', self.config.get('scoring_threshold', 0.65))
+        threshold = kwargs.get('threshold', self.config.get('scoring_threshold', 65.0))
         
         total_score = scores.get('total_score', 0.0)
         
@@ -337,19 +338,19 @@ class DailyKlineScoringPlugin(BasePlugin, IScoringStrategy, IStrategyPlugin):
             return {
                 'signal': 'BUY',
                 'confidence': total_score,
-                'reason': f"Score {total_score:.3f} >= threshold {threshold}"
+                'reason': f"Score {total_score:.1f} >= threshold {threshold}"
             }
         elif total_score >= threshold * 0.8:
             return {
                 'signal': 'HOLD',
                 'confidence': total_score,
-                'reason': f"Score {total_score:.3f} close to threshold {threshold}"
+                'reason': f"Score {total_score:.1f} close to threshold {threshold}"
             }
         else:
             return {
                 'signal': 'SELL',
                 'confidence': total_score,
-                'reason': f"Score {total_score:.3f} below threshold {threshold}"
+                'reason': f"Score {total_score:.1f} below threshold {threshold}"
             }
     
     def get_factor_weights(self) -> Dict[str, float]:

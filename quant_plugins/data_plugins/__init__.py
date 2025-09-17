@@ -166,6 +166,7 @@ class IDataStoragePlugin(Protocol):
 
 # 导出插件类 (将在具体实现文件中定义)
 from .tushare_data_plugin import TushareDataPlugin
+from .ashare_data_plugin import AshareDataPlugin
 from .data_preprocessing_plugin import DataPreprocessingPlugin
 from .warehouse_storage_plugin import WarehouseStoragePlugin
 
@@ -177,6 +178,7 @@ __all__ = [
     
     # 具体插件
     'TushareDataPlugin',
+    'AshareDataPlugin',
     'DataPreprocessingPlugin',
     'WarehouseStoragePlugin'
 ]
