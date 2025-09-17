@@ -11,13 +11,13 @@
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import warnings
 
-from ascend.plugins.base import BasePlugin
+from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
 from . import IBacktestEngine, IRiskManager
 
@@ -34,19 +34,19 @@ class DailyBacktestEnginePluginConfig(BaseModel):
     max_drawdown_limit: float = Field(0.3, description="最大回撤限制")
     enable_short_selling: bool = Field(False, description="是否允许卖空")
     
-    @validator('initial_capital')
+    @field_validator('initial_capital')
     def validate_initial_capital(cls, v):
         if v <= 0:
             raise ValueError('Initial capital must be positive')
         return v
     
-    @validator('commission', 'slippage')
+    @field_validator('commission', 'slippage')
     def validate_fees(cls, v):
         if v < 0:
             raise ValueError('Fees cannot be negative')
         return v
     
-    @validator('max_position_per_stock')
+    @field_validator('max_position_per_stock')
     def validate_position_limit(cls, v):
         if not 0 < v <= 1:
             raise ValueError('Position limit must be between 0 and 1')

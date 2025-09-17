@@ -19,7 +19,7 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from ascend.plugins.base import BasePlugin
+from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
 from . import IDataStoragePlugin
 

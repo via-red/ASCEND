@@ -10,13 +10,13 @@
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import uuid
 
-from ascend.plugins.base import BasePlugin
+from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
 from . import ITrader, IRiskController
 
@@ -32,19 +32,19 @@ class SimTraderPluginConfig(BaseModel):
     trade_execution_delay: int = Field(0, description="交易执行延迟(秒)")
     enable_short_selling: bool = Field(False, description="是否允许卖空")
     
-    @validator('initial_capital')
+    @field_validator('initial_capital')
     def validate_initial_capital(cls, v):
         if v <= 0:
             raise ValueError('Initial capital must be positive')
         return v
     
-    @validator('commission_rate', 'slippage_rate')
+    @field_validator('commission_rate', 'slippage_rate')
     def validate_rates(cls, v):
         if v < 0:
             raise ValueError('Rates cannot be negative')
         return v
     
-    @validator('max_position_per_stock')
+    @field_validator('max_position_per_stock')
     def validate_position_limit(cls, v):
         if not 0 < v <= 1:
             raise ValueError('Position limit must be between 0 and 1')

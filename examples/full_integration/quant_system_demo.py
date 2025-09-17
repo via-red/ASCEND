@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
-from ascend.plugins.manager import PluginManager
+from ascend.plugin_manager.manager import PluginManager
 from ascend.core.exceptions import PluginError
 
 # 导入所有量化插件

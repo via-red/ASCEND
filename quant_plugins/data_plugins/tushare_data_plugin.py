@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-from ascend.plugins.base import BasePlugin
+from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
 from . import IDataSourcePlugin
 

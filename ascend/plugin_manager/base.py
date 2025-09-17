@@ -12,7 +12,7 @@ from ascend.core.types import PluginMetadata
 from ascend.core.exceptions import PluginError
 
 if TYPE_CHECKING:
-    from ascend.plugins.manager import IPluginRegistry
+    from ascend.plugin_manager.manager import IPluginRegistry
 
 class BasePlugin(IPlugin, ABC):
     """插件基础抽象类"""

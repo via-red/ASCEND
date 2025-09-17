@@ -135,7 +135,7 @@ def create_custom_plugin_example():
     print("创建自定义插件示例")
     print("=" * 50)
     
-    from ascend.plugins import BasePlugin
+    from ascend.plugin_manager import BasePlugin
     from ascend.core import PluginMetadata
     
     class DemoPlugin(BasePlugin):

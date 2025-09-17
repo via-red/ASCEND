@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 
-from ascend.plugins.base import BasePlugin
+from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
 from .core_performance_evaluator import CorePerformanceEvaluator
 

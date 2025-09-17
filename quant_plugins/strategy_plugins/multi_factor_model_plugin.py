@@ -10,13 +10,13 @@
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import pandas as pd
 import numpy as np
 from datetime import datetime
 import warnings
 
-from ascend.plugins.base import BasePlugin
+from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
 from . import IFactorModel, IStrategyPlugin
 
@@ -33,19 +33,19 @@ class MultiFactorModelPluginConfig(BaseModel):
     enable_factor_rotation: bool = Field(False, description="是否启用因子轮动")
     min_data_points: int = Field(20, description="最小数据点数")
     
-    @validator('enabled_factors')
+    @field_validator('enabled_factors')
     def validate_enabled_factors(cls, v):
         if not v:
             raise ValueError('Enabled factors cannot be empty')
         return v
     
-    @validator('factor_calculation_window')
+    @field_validator('factor_calculation_window')
     def validate_calculation_window(cls, v):
         if v < 10:
             raise ValueError('Factor calculation window must be at least 10')
         return v
     
-    @validator('factor_normalization')
+    @field_validator('factor_normalization')
     def validate_normalization_method(cls, v):
         valid_methods = ['zscore', 'rank', 'none']
         if v not in valid_methods:

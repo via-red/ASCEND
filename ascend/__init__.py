@@ -60,7 +60,7 @@ from .config import (
     save_config,
 )
 
-from .plugins import (
+from .plugin_manager import (
     BasePlugin,
     PluginRegistry,
     PluginManager,
@@ -181,7 +181,7 @@ def cleanup_framework():
     清理框架占用的资源，如关闭插件、清理缓存等。
     """
     # 清理所有已加载的插件
-    from .plugins import default_manager
+    from .plugin_manager import default_manager
     default_manager.clear_all_plugins()
 
 

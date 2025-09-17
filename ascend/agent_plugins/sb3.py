@@ -324,7 +324,7 @@ class SB3Plugin(BasePlugin):
 
 from pydantic import BaseModel, Field, PositiveInt
 
-from ascend.plugins.base import BasePlugin
+from ascend.plugin_manager.base import BasePlugin
 from ascend.core.protocols import IPluginRegistry
 from ascend.core.exceptions import PluginError
 

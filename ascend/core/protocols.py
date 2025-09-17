@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from ..plugins.base import IPluginRegistry  # 仅用于类型检查
+    from ..plugin_manager.base import IPluginRegistry  # 仅用于类型检查
 
 class IPluginRegistry(Protocol):
     """插件注册表协议

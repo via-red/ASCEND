@@ -13,7 +13,7 @@ import asyncio
 from typing import Dict, Any
 import pandas as pd
 
-from ascend.plugins.manager import PluginManager
+from ascend.plugin_manager.manager import PluginManager
 from quant_plugins.data_plugins import (
     TushareDataPlugin, 
     DataPreprocessingPlugin,

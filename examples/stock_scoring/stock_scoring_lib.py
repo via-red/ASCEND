@@ -17,7 +17,7 @@ import argparse
 import json
 from datetime import datetime, timedelta
 
-from ascend.plugins.manager import PluginManager
+from ascend.plugin_manager.manager import PluginManager
 from quant_plugins.strategy_plugins import DailyKlineScoringPlugin
 from quant_plugins.data_plugins import TushareDataPlugin, DataPreprocessingPlugin
 
