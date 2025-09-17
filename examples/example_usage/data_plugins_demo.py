@@ -1,6 +1,12 @@
 """
-ASCEND 量化插件使用示例
+ASCEND 数据插件使用演示 (data_plugins_demo.py)
 展示如何使用数据插件层进行数据获取、处理和存储
+
+功能:
+- Tushare数据获取
+- 数据预处理和特征工程
+- 数据存储和管理
+- 缓存机制演示
 """
 
 import asyncio

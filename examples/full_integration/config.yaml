@@ -1,0 +1,159 @@
+# ASCEND 完整集成示例配置文件
+version: "1.0.0"
+framework: "ascend"
+description: "完整的量化交易系统集成配置"
+
+# 数据插件配置
+tushare_data:
+  token: "your_tushare_token_here"  # 需要替换为实际的Tushare token
+  timeout: 30
+  max_retries: 3
+  cache_enabled: true
+  cache_duration: 3600
+
+data_preprocessing:
+  missing_value_strategy: "fill"
+  scaling_method: "standard"
+  feature_engineering: true
+  outlier_detection: true
+  normalization: true
+  technical_indicators: true
+
+warehouse_storage:
+  storage_path: "./data/warehouse"
+  storage_format: "parquet"
+  compression: "snappy"
+  auto_cleanup: true
+  retention_days: 90
+
+# 策略插件配置
+daily_kline_scoring:
+  factor_weights:
+    momentum: 0.35
+    volume: 0.15
+    volatility: 0.15
+    trend: 0.25
+    rsi_strength: 0.10
+  scoring_threshold: 0.65
+  min_data_points: 20
+  signal_generation: true
+  risk_management: true
+
+# 回测插件配置
+daily_backtest_engine:
+  initial_capital: 1000000.0
+  commission: 0.0003
+  slippage: 0.0001
+  max_position_per_stock: 0.2
+  position_sizing: "fixed_fraction"
+  stop_loss: 0.1
+  take_profit: 0.2
+
+performance_evaluator:
+  risk_free_rate: 0.02
+  calc_daily_metrics: true
+  benchmark: "000300.SH"  # 沪深300
+  metrics:
+    - "sharpe_ratio"
+    - "max_drawdown"
+    - "annualized_return"
+    - "volatility"
+    - "win_rate"
+
+# 执行插件配置
+sim_trader:
+  initial_capital: 1000000.0
+  commission_rate: 0.0003
+  slippage_rate: 0.0001
+  max_position_size: 0.2
+  min_trade_amount: 100
+  trade_execution: "market"
+
+realtime_monitor:
+  monitoring_interval: 60
+  log_level: "INFO"
+  alert_thresholds:
+    drawdown: 0.05
+    volatility: 0.15
+    position_concentration: 0.3
+
+# 股票池配置
+stock_universe:
+  indexes:
+    - "000300.SH"  # 沪深300
+    - "000905.SH"  # 中证500
+    - "000852.SH"  # 中证1000
+  sectors:
+    - "banking"
+    - "insurance"
+    - "technology"
+  min_market_cap: 1000000000  # 10亿
+  min_liquidity: 1000000  # 100万
+
+# 时间范围配置
+time_period:
+  backtest:
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+  validation:
+    start_date: "2024-01-01"
+    end_date: "2024-03-31"
+  realtime:
+    start_date: "2024-04-01"
+
+# 策略参数
+strategy_params:
+  rebalance_frequency: "weekly"  # daily, weekly, monthly
+  max_holdings: 10
+  min_score: 0.6
+  max_turnover: 0.5
+  risk_aversion: 0.5
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "full_integration.log"
+  console: true
+  rotation: "daily"
+  retention: 7
+
+# 性能监控
+monitoring:
+  enabled: true
+  metrics_collection: true
+  realtime_alerts: true
+  dashboard:
+    enabled: true
+    port: 8080
+    refresh_interval: 30
+
+# 报告生成
+reporting:
+  format: "html"  # html, pdf, json
+  include_charts: true
+  performance_metrics: true
+  trade_analysis: true
+  risk_analysis: true
+  save_path: "./reports"
+
+# 缓存配置
+cache:
+  enabled: true
+  ttl: 86400  # 24小时
+  max_size: 5000
+  memory_limit: "1GB"
+
+# 错误处理
+error_handling:
+  max_retries: 3
+  retry_delay: 10
+  fallback_strategy: "skip"
+  notify_on_error: true
+
+# 环境变量（可选）
+env_vars:
+  TUSHARE_TOKEN: "optional"
+  DATA_DIR: "./data"
+  LOG_DIR: "./logs"
+  REPORT_DIR: "./reports"
+  CACHE_DIR: "./cache"

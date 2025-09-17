@@ -1,0 +1,88 @@
+# ASCEND 量化插件示例配置文件
+version: "1.0.0"
+framework: "ascend"
+
+# 数据插件配置
+tushare_data:
+  token: "your_tushare_token_here"  # 需要替换为实际的Tushare token
+  timeout: 30
+  max_retries: 3
+  cache_enabled: true
+  cache_duration: 3600
+
+data_preprocessing:
+  missing_value_strategy: "fill"
+  scaling_method: "standard"
+  feature_engineering: true
+  outlier_detection: true
+  normalization: true
+
+warehouse_storage:
+  storage_path: "./data/warehouse"
+  storage_format: "parquet"
+  compression: "snappy"
+  auto_cleanup: true
+  retention_days: 30
+
+# 示例股票列表
+symbols:
+  - "000001.SZ"  # 平安银行
+  - "000002.SZ"  # 万科A
+  - "600000.SH"  # 浦发银行
+  - "601318.SH"  # 中国平安
+  - "600036.SH"  # 招商银行
+
+# 数据时间范围
+data_range:
+  start_date: "2023-01-01"
+  end_date: "2023-12-31"
+  default_days: 60
+
+# 数据获取配置
+data_fetching:
+  batch_size: 10
+  max_concurrent: 3
+  retry_delay: 5
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "example_usage.log"
+  console: true
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# 性能监控
+monitoring:
+  enabled: true
+  interval: 60
+  metrics:
+    - "data_fetch_time"
+    - "processing_time"
+    - "memory_usage"
+
+# 缓存配置
+cache:
+  enabled: true
+  ttl: 86400  # 24小时
+  max_size: 1000
+
+# 错误处理
+error_handling:
+  max_retries: 3
+  retry_delay: 10
+  log_errors: true
+  continue_on_error: false
+
+# 输出配置
+output:
+  format: "json"
+  pretty_print: true
+  include_timestamps: true
+  save_to_file: true
+  file_path: "./results/example_usage_results.json"
+
+# 环境变量（可选）
+env_vars:
+  TUSHARE_TOKEN: "optional"
+  DATA_DIR: "./data"
+  LOG_DIR: "./logs"

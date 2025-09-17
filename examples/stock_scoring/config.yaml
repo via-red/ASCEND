@@ -1,0 +1,158 @@
+# ASCEND 策略评分选股配置文件
+version: "1.0.0"
+framework: "ascend"
+description: "多因子策略评分选股配置"
+
+# 数据源配置
+data_source:
+  plugin: "tushare_data"  # tushare_data 或 ashare_data
+  tushare_token: "your_tushare_token_here"  # Tushare token
+  timeout: 30
+  max_retries: 3
+  cache_enabled: true
+  cache_duration: 3600
+
+# 数据预处理配置
+data_preprocessing:
+  missing_value_strategy: "fill"  # fill, drop, interpolate
+  scaling_method: "standard"  # standard, minmax, robust
+  feature_engineering: true
+  technical_indicators: true
+  normalization: true
+  outlier_handling: true
+
+# 存储配置
+storage:
+  plugin: "warehouse_storage"
+  storage_path: "./data/warehouse"
+  storage_format: "parquet"  # parquet, csv, feather
+  compression: "snappy"
+  auto_cleanup: true
+  retention_days: 60
+
+# 策略评分配置
+scoring:
+  plugin: "daily_kline_scoring"
+  factor_weights:
+    momentum: 0.35
+    volume: 0.15
+    volatility: 0.15
+    trend: 0.25
+    rsi_strength: 0.10
+  scoring_threshold: 65.0  # 0-100分
+  min_data_points: 20
+  signal_generation: true
+  risk_adjustment: true
+
+# 选股标准
+selection_criteria:
+  min_score: 65.0  # 最低评分阈值
+  max_stocks: 10   # 最大选股数量
+  min_liquidity: 1000000  # 最小成交量
+  min_market_cap: 500000000  # 最小市值
+  exclude_st: true  # 排除ST股票
+  exclude_new: true  # 排除新股
+
+# 股票池配置
+stock_universe:
+  indexes:
+    - "000300.SH"  # 沪深300
+    - "000905.SH"  # 中证500
+    - "000852.SH"  # 中证1000
+  sectors:  # 行业配置
+    - "banking"
+    - "insurance"
+    - "technology"
+    - "healthcare"
+    - "consumer"
+  custom_symbols:  # 自定义股票列表
+    - "000001.SZ"  # 平安银行
+    - "000002.SZ"  # 万科A
+    - "600000.SH"  # 浦发银行
+    - "601318.SH"  # 中国平安
+    - "600036.SH"  # 招商银行
+
+# 时间范围配置
+time_period:
+  default_days: 60  # 默认数据天数
+  start_date: "2023-01-01"  # 固定开始日期
+  end_date: "2023-12-31"    # 固定结束日期
+  rolling_window: 252       # 滚动窗口（交易日）
+
+# 回测配置（可选）
+backtest:
+  enabled: false
+  initial_capital: 1000000.0
+  commission: 0.0003
+  slippage: 0.0001
+  position_sizing: "equal_weight"
+  max_position_per_stock: 0.2
+
+# 性能评估配置
+performance:
+  risk_free_rate: 0.02
+  benchmark: "000300.SH"  # 基准指数
+  metrics:
+    - "total_return"
+    - "annualized_return"
+    - "sharpe_ratio"
+    - "max_drawdown"
+    - "win_rate"
+    - "profit_factor"
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "stock_scoring.log"
+  console: true
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  rotation: "daily"
+  retention: 7
+
+# 输出配置
+output:
+  format: "json"  # json, csv, html
+  pretty_print: true
+  include_details: true
+  save_path: "./results"
+  filename_pattern: "stock_selection_%Y%m%d_%H%M%S.json"
+
+# 缓存配置
+cache:
+  enabled: true
+  ttl: 86400  # 24小时缓存
+  max_size: 1000
+  memory_limit: "512MB"
+
+# 错误处理
+error_handling:
+  max_retries: 3
+  retry_delay: 5
+  skip_on_error: true
+  log_errors: true
+
+# 调度配置（可选）
+scheduling:
+  enabled: false
+  cron_expression: "0 9 * * 1-5"  # 工作日早上9点
+  timezone: "Asia/Shanghai"
+
+# 通知配置（可选）
+notifications:
+  enabled: false
+  email:
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    username: "user@example.com"
+    password: "password"
+  webhook:
+    url: "https://hook.example.com"
+    secret: "secret"
+
+# 环境变量（可选）
+env_vars:
+  TUSHARE_TOKEN: "optional"
+  ASHARE_DATA_DIR: "./data/ashare"
+  LOG_DIR: "./logs"
+  CACHE_DIR: "./cache"
+  RESULTS_DIR: "./results"

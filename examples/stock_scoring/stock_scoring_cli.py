@@ -1,13 +1,13 @@
 """
-策略评分选股运行脚本
+ASCEND 策略评分选股命令行工具 (stock_scoring_cli.py)
 基于quant_plugins的多因子评分模型对股票进行评分和筛选
 
 使用说明:
-1. 直接运行使用示例数据: python run_stock_scoring.py
+1. 直接运行使用示例数据: python stock_scoring_cli.py
 2. 使用真实数据可选择数据源:
    - Tushare: 需要配置Tushare token (--data-source tushare --tushare-token YOUR_TOKEN)
    - Ashare: 免费数据源 (--data-source ashare)
-3. 支持命令行参数配置
+3. 支持命令行参数配置和配置文件
 """
 
 import pandas as pd
