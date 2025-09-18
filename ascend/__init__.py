@@ -66,7 +66,6 @@ from .plugin_manager import (
     PluginManager,
     PluginDiscovery,
     default_manager,
-    default_discovery,
     load_plugin,
     load_plugins,
     unload_plugin,

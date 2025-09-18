@@ -38,9 +38,11 @@ class BasePluginManager:
         """Initialize plugin manager
         
         Args:
-            plugin_paths: Plugin search paths
+            discovery: Plugin discovery instance (optional)
+            plugin_paths: Plugin search paths (optional, used if discovery is None)
         """
         self.discovery = PluginDiscovery(plugin_paths)
+            
         self.plugins: Dict[str, IPlugin] = {}
         self.plugin_status: Dict[str, PluginStatus] = {}
         # 自动发现内置插件
@@ -241,7 +243,7 @@ class BasePluginManager:
 class PluginManager(BasePluginManager):
     """Plugin manager implementation"""
     
-    def __init__(self, plugin_paths: Optional[List[str]] = None):
+    def __init__(self,  plugin_paths: Optional[List[str]] = None):
         super().__init__(plugin_paths)
         self.registry = PluginRegistry()
         self._loaded_plugins: Dict[str, BasePlugin] = {}
@@ -377,7 +379,3 @@ class PluginManager(BasePluginManager):
             except PluginError:
                 # Ignore unload errors and continue with other plugins
                 continue
-
-
-# Create default plugin manager instance
-default_manager = PluginManager()

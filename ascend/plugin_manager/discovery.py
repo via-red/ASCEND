@@ -51,10 +51,10 @@ class PluginDiscovery:
         """
         self.plugin_paths = plugin_paths or []
         self.env_file_path = env_file_path
+        self._add_default_paths()
         self._discovered_plugins: Dict[str, PluginInfo] = {}
         self._loaded_plugins: Dict[str, IPlugin] = {}
         self._dependency_graph: Dict[str, Set[str]] = {}
-        self._add_default_paths()
 
     @property
     def discovered_plugins(self) -> Dict[str, PluginInfo]:
@@ -88,14 +88,7 @@ class PluginDiscovery:
         
     def _add_default_paths(self) -> None:
         """添加默认的插件搜索路径"""
-        # 添加当前包的plugins目录
-        current_dir = Path(__file__).parent
-        self.plugin_paths.append(str(current_dir))
-        
-        # 从环境变量读取额外的插件路径（优先从参数传入的路径）
-        # 首先检查是否已经有通过参数传入的路径
-        has_explicit_paths = len(self.plugin_paths) > 1  # 大于1是因为上面已经添加了当前目录
-        
+    
         # 从环境变量读取插件路径（支持.env文件和系统环境变量）
         env_plugin_paths = get_env_var('ASCEND_PLUGIN_PATHS', '', self.env_file_path)
         if env_plugin_paths:
@@ -110,12 +103,14 @@ class PluginDiscovery:
                             logger.info(f"Added plugin path from environment: {plugin_path}")
                         else:
                             logger.debug(f"Plugin path already exists, skipping: {plugin_path}")
-        
+        # 首先检查是否已经有通过参数传入的路径
+        has_explicit_paths = len(self.plugin_paths) > 1  # 大于1是因为上面已经添加了当前目录
         # 添加用户级的插件目录（除非已经有显式传入的路径）
         if not has_explicit_paths:
-            user_plugins = Path.home() / ".ascend" / "plugins"
-            if user_plugins.exists():
-                self.plugin_paths.append(str(user_plugins))
+               # 添加当前包的plugins目录
+            current_dir = Path(__file__).parent
+            self.plugin_paths.append(str(current_dir))
+        
     
     def discover_plugins(self) -> Dict[str, PluginInfo]:
         """发现所有可用的插件
@@ -190,8 +185,6 @@ class PluginDiscovery:
         if not plugin_class:
             return None
         
-        # 延迟实例化，避免循环引用
-        # 使用类名作为插件名称，实例化推迟到实际加载时
         try:
             return PluginInfo(
                 name=plugin_class.__name__,
@@ -412,11 +405,10 @@ def discover_and_load_plugins(plugin_names: List[str],
     Raises:
         PluginError: 插件加载失败
     """
-    # 这些实例将在首次使用时通过延迟导入创建
-    if manager is None or discovery is None:
-        from . import default_manager, default_discovery
-        manager = manager or default_manager
-        discovery = discovery or default_discovery
+    # 使用默认实例
+    from . import default_manager, default_discovery
+    manager = manager or default_manager
+    discovery = discovery or default_discovery
     
     configs = configs or {}
     
@@ -430,12 +422,6 @@ def discover_and_load_plugins(plugin_names: List[str],
     
     # 加载插件
     return manager.load_plugins(resolved_plugins, configs)
-
-
-# 创建默认插件发现器实例
-default_discovery = PluginDiscovery()
-
-
 
 
 def auto_discover_plugins(config: Config,
@@ -454,11 +440,10 @@ def auto_discover_plugins(config: Config,
     Raises:
         PluginError: 插件加载失败
     """
-    # 这些实例将在首次使用时通过延迟导入创建
-    if manager is None or discovery is None:
-        from . import default_manager, default_discovery
-        manager = manager or default_manager
-        discovery = discovery or default_discovery
+    # 使用默认实例
+    from . import default_manager, default_discovery
+    manager = manager or default_manager
+    discovery = discovery or default_discovery
     
     plugin_names = config.get('plugins', [])
     plugin_configs = config.get('plugin_configs', {})

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ascend.core.protocols import IPlugin
 from ascend.core.exceptions import PluginError, PluginNotFoundError, PluginLoadError
 from ascend.core.types import Config
+from ascend.plugin_manager.env_utils import load_env_file
 
 # 先导入基础类
 from .base import BasePlugin, PluginRegistry
@@ -17,19 +18,11 @@ from .base import BasePlugin, PluginRegistry
 from .manager import PluginManager
 from .discovery import PluginDiscovery, discover_and_load_plugins, auto_discover_plugins
 
-# 延迟导入管理器实例，避免循环引用
-# 这些实例将在首次使用时创建
-default_manager = None
-default_discovery = None
+# 创建默认插件发现器和管理器实例
+from .manager import PluginManager
 
-def _lazy_import_manager():
-    """延迟导入管理器实例"""
-    global default_manager, default_discovery
-    if default_manager is None:
-        from .manager import PluginManager
-        from .discovery import PluginDiscovery
-        default_manager = PluginManager()
-        default_discovery = PluginDiscovery()
+# 先创建discovery实例，然后传入manager
+default_manager = PluginManager()
 
 __all__ = [
     # 基础类
@@ -40,7 +33,6 @@ __all__ = [
     
     # 实例
     'default_manager',
-    'default_discovery',
     
     # 协议
     'IPlugin',
@@ -69,7 +61,6 @@ def load_plugin(plugin_name: str, config: Config = None) -> BasePlugin:
     Raises:
         PluginError: 插件加载失败
     """
-    _lazy_import_manager()
     return default_manager.load_plugin(plugin_name, config)
 
 
@@ -86,7 +77,6 @@ def load_plugins(plugin_names: List[str], configs: Dict[str, Config] = None) -> 
     Raises:
         PluginError: 插件加载失败
     """
-    _lazy_import_manager()
     return default_manager.load_plugins(plugin_names, configs)
 
 
@@ -99,7 +89,6 @@ def unload_plugin(plugin_name: str) -> None:
     Raises:
         PluginError: 插件卸载失败
     """
-    _lazy_import_manager()
     default_manager.unload_plugin(plugin_name)
 
 
@@ -112,7 +101,6 @@ def get_plugin(plugin_name: str) -> Optional[BasePlugin]:
     Returns:
         插件实例或None
     """
-    _lazy_import_manager()
     return default_manager.get_plugin(plugin_name)
 
 
@@ -122,7 +110,6 @@ def list_loaded_plugins() -> List[str]:
     Returns:
         插件名称列表
     """
-    _lazy_import_manager()
     return default_manager.list_loaded_plugins()
 
 
@@ -132,7 +119,6 @@ def list_available_plugins() -> List[Dict[str, Any]]:
     Returns:
         插件信息列表
     """
-    _lazy_import_manager()
     return default_manager.list_available_plugins()
 
 
@@ -146,13 +132,11 @@ def configure_plugin(plugin_name: str, config: Config) -> None:
     Raises:
         PluginError: 配置失败
     """
-    _lazy_import_manager()
     default_manager.configure_plugin(plugin_name, config)
 
 
 def clear_all_plugins() -> None:
     """清除所有已加载插件的便捷函数"""
-    _lazy_import_manager()
     default_manager.clear_all_plugins()
 
 
@@ -165,8 +149,9 @@ def discover_plugins(refresh: bool = False) -> Dict[str, Any]:
     Returns:
         插件信息字典
     """
-    _lazy_import_manager()
-    return default_discovery.discover_plugins(refresh)
+    if refresh:
+        default_manager.discovery.clear_cache()
+    return default_manager.discovery.discover_plugins()
 
 
 def resolve_plugin_dependencies(plugin_names: List[str]) -> List[str]:
@@ -181,8 +166,7 @@ def resolve_plugin_dependencies(plugin_names: List[str]) -> List[str]:
     Raises:
         PluginError: 依赖解析失败
     """
-    _lazy_import_manager()
-    return default_discovery.resolve_dependencies(plugin_names)
+    return default_manager.discovery.resolve_dependencies(plugin_names)
 
 
 def check_plugin_compatibility(plugin_names: List[str]) -> Tuple[bool, List[str]]:
@@ -194,5 +178,4 @@ def check_plugin_compatibility(plugin_names: List[str]) -> Tuple[bool, List[str]
     Returns:
         (是否兼容, 不兼容的插件列表)
     """
-    _lazy_import_manager()
-    return default_discovery.check_compatibility(plugin_names)
+    return default_manager.discovery.check_compatibility(plugin_names)
