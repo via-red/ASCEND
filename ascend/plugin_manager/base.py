@@ -423,9 +423,10 @@ def register_builtin_plugin(plugin_class: Type['BasePlugin']) -> Type['BasePlugi
     Returns:
         装饰后的插件类
     """
-    # 创建实例以获取元数据
-    plugin_instance = plugin_class()
-    _builtin_plugins_registry[plugin_instance.name] = plugin_class
+    # 创建实例以获取元数据 - 延迟实例化，避免循环引用
+    # 这里不能直接实例化，因为插件类可能还没有完全初始化
+    # 将插件类注册到内置插件注册表，实例化推迟到实际使用时
+    _builtin_plugins_registry[plugin_class.__name__] = plugin_class
     return plugin_class
 
 

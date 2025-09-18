@@ -182,7 +182,8 @@ def cleanup_framework():
     """
     # 清理所有已加载的插件
     from .plugin_manager import default_manager
-    default_manager.clear_all_plugins()
+    if default_manager is not None:
+        default_manager.clear_all_plugins()
 
 
 # 自动初始化框架

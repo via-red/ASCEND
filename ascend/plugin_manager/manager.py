@@ -322,6 +322,45 @@ class PluginManager(BasePluginManager):
         """
         return list(self.discovery.discovered_plugins.keys())
     
+    def load_plugins(self, plugin_names: List[str], configs: Dict[str, Config] = None) -> List[BasePlugin]:
+        """Load multiple plugins
+        
+        Args:
+            plugin_names: List of plugin names to load
+            configs: Dictionary of plugin configurations (optional)
+            
+        Returns:
+            List of loaded plugin instances
+            
+        Raises:
+            PluginError: If any plugin loading fails
+        """
+        loaded_plugins = []
+        
+        for plugin_name in plugin_names:
+            try:
+                # Load the plugin
+                plugin = self.load_plugin(plugin_name)
+                
+                # Initialize with configuration if provided
+                if configs and plugin_name in configs:
+                    self.initialize_plugin(plugin_name, configs[plugin_name])
+                
+                loaded_plugins.append(plugin)
+                logger.info(f"Successfully loaded plugin: {plugin_name}")
+                
+            except Exception as e:
+                logger.error(f"Failed to load plugin {plugin_name}: {e}")
+                # Continue loading other plugins even if one fails
+                # The error will be raised after attempting all plugins
+                continue
+        
+        if len(loaded_plugins) != len(plugin_names):
+            failed_plugins = set(plugin_names) - {p.get_name() for p in loaded_plugins}
+            raise PluginError(f"Failed to load plugins: {', '.join(failed_plugins)}")
+        
+        return loaded_plugins
+
     def __enter__(self):
         """Context manager entry"""
         return self

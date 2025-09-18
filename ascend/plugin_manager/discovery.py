@@ -73,18 +73,18 @@ class PluginDiscovery:
         builtin_plugins = get_builtin_plugins()
         
         for plugin_name, plugin_class in builtin_plugins.items():
-            # 创建插件实例并获取信息
-            plugin_instance = plugin_class()
+            # 延迟实例化，避免循环引用
+            # 使用类名作为插件名称，实例化推迟到实际加载时
             self._discovered_plugins[plugin_name] = PluginInfo(
-                name=plugin_instance.name,
-                version=plugin_instance.version,
-                description=plugin_instance.description,
+                name=plugin_name,
+                version="1.0.0",  # 默认版本，实际版本在实例化时获取
+                description=f"Builtin plugin: {plugin_name}",
                 module_path=plugin_class.__module__,
-                dependencies=plugin_instance.get_metadata().get('dependencies', []),
+                dependencies=[],  # 默认无依赖，实际依赖在实例化时获取
                 plugin_class=plugin_class,
-                config_schema=plugin_instance.get_config_schema()
+                config_schema=None  # 配置模型在实例化时获取
             )
-            logger.info(f"Registered builtin plugin: {plugin_name}")
+            logger.info(f"Registered builtin plugin class: {plugin_name}")
         
     def _add_default_paths(self) -> None:
         """添加默认的插件搜索路径"""
@@ -136,9 +136,10 @@ class PluginDiscovery:
             if not plugin_path.exists():
                 continue
                 
-            # 扫描路径下的所有Python文件
+            # 扫描路径下的所有Python文件，排除插件管理器自身的文件
             for file_path in plugin_path.glob("*.py"):
-                if file_path.name.startswith("_"):
+                if (file_path.name.startswith("_") or
+                    file_path.name in ['base.py', 'discovery.py', 'manager.py', 'types.py', 'env_utils.py']):
                     continue
                     
                 try:
@@ -189,20 +190,20 @@ class PluginDiscovery:
         if not plugin_class:
             return None
         
-        # 创建临时实例以获取元数据
+        # 延迟实例化，避免循环引用
+        # 使用类名作为插件名称，实例化推迟到实际加载时
         try:
-            temp_instance = plugin_class()
             return PluginInfo(
-                name=temp_instance.get_name(),
-                version=temp_instance.get_version(),
-                description=temp_instance.get_metadata().get("description", ""),
+                name=plugin_class.__name__,
+                version="1.0.0",  # 默认版本，实际版本在实例化时获取
+                description=f"Plugin: {plugin_class.__name__}",
                 module_path=str(file_path),
-                dependencies=temp_instance.get_metadata().get("dependencies", []),
+                dependencies=[],  # 默认无依赖，实际依赖在实例化时获取
                 plugin_class=plugin_class,
-                config_schema=temp_instance.get_config_schema()
+                config_schema=None  # 配置模型在实例化时获取
             )
         except Exception as e:
-            logger.warning(f"Failed to instantiate plugin {module_name}: {e}")
+            logger.warning(f"Failed to create plugin info for {module_name}: {e}")
             return None
     
     def load_plugin(self, name: str) -> IPlugin:
@@ -393,15 +394,17 @@ class PluginDiscovery:
 
 
 
-def discover_and_load_plugins(plugin_names: List[str], 
+def discover_and_load_plugins(plugin_names: List[str],
                              configs: Optional[Dict[str, Config]] = None,
-                             manager: Optional[Any] = None) -> List[BasePlugin]:
+                             manager: Optional[Any] = None,
+                             discovery: Optional[Any] = None) -> List[BasePlugin]:
     """发现并加载插件（便捷函数）
     
     Args:
         plugin_names: 插件名称列表
         configs: 插件配置字典
         manager: 插件管理器实例（可选）
+        discovery: 插件发现器实例（可选）
         
     Returns:
         加载的插件实例列表
@@ -409,14 +412,19 @@ def discover_and_load_plugins(plugin_names: List[str],
     Raises:
         PluginError: 插件加载失败
     """
-    manager = manager or default_manager
+    # 这些实例将在首次使用时通过延迟导入创建
+    if manager is None or discovery is None:
+        from . import default_manager, default_discovery
+        manager = manager or default_manager
+        discovery = discovery or default_discovery
+    
     configs = configs or {}
     
     # 解析依赖关系
-    resolved_plugins = default_discovery.resolve_dependencies(plugin_names)
+    resolved_plugins = discovery.resolve_dependencies(plugin_names)
     
     # 检查兼容性
-    compatible, incompatible = default_discovery.check_compatibility(resolved_plugins)
+    compatible, incompatible = discovery.check_compatibility(resolved_plugins)
     if not compatible:
         raise PluginError(f"Incompatible plugins: {incompatible}")
     
@@ -431,12 +439,14 @@ default_discovery = PluginDiscovery()
 
 
 def auto_discover_plugins(config: Config,
-                         manager: Optional[Any] = None) -> List[BasePlugin]:
+                         manager: Optional[Any] = None,
+                         discovery: Optional[Any] = None) -> List[BasePlugin]:
     """自动发现并加载配置中指定的插件
     
     Args:
         config: 配置字典
         manager: 插件管理器实例（可选）
+        discovery: 插件发现器实例（可选）
         
     Returns:
         加载的插件实例列表
@@ -444,9 +454,13 @@ def auto_discover_plugins(config: Config,
     Raises:
         PluginError: 插件加载失败
     """
-    manager = manager or default_manager
+    # 这些实例将在首次使用时通过延迟导入创建
+    if manager is None or discovery is None:
+        from . import default_manager, default_discovery
+        manager = manager or default_manager
+        discovery = discovery or default_discovery
     
     plugin_names = config.get('plugins', [])
     plugin_configs = config.get('plugin_configs', {})
     
-    return discover_and_load_plugins(plugin_names, plugin_configs, manager)
+    return discover_and_load_plugins(plugin_names, plugin_configs, manager, discovery)
