@@ -215,3 +215,69 @@ class Ascend:
             self.scan_and_load_plugins()
         else:
             logger.info("自动发现插件已禁用或未配置插件")
+    
+    def execute_pipeline(self, plugin_sequence: List[str], **kwargs) -> Dict[str, Any]:
+        """执行插件流水线
+        
+        Args:
+            plugin_sequence: 插件执行顺序列表
+            **kwargs: 执行参数
+            
+        Returns:
+            各插件执行结果字典
+        """
+        results = {}
+        current_context = kwargs.copy()
+        
+        for plugin_name in plugin_sequence:
+            try:
+                plugin = self.get_plugin(plugin_name)
+                # 直接调用插件的start方法
+                plugin_result = plugin.start(self, **current_context)
+                results[plugin_name] = plugin_result
+                
+                # 将结果作为后续插件的输入上下文
+                if isinstance(plugin_result, dict):
+                    current_context.update(plugin_result)
+                    
+            except Exception as e:
+                results[plugin_name] = {"error": str(e)}
+                logger.error(f"插件 {plugin_name} 执行失败: {e}")
+                # 可以选择继续执行或中断
+                break
+        
+        return results
+    
+    def start_all_plugins(self, **kwargs) -> Dict[str, Any]:
+        """启动所有已加载的插件
+        
+        Args:
+            **kwargs: 执行参数
+            
+        Returns:
+            所有插件执行结果
+        """
+        results = {}
+        for plugin_name in self.list_loaded_plugins():
+            try:
+                plugin = self.get_plugin(plugin_name)
+                plugin_result = plugin.start(self, **kwargs)
+                results[plugin_name] = plugin_result
+            except Exception as e:
+                results[plugin_name] = {"error": str(e)}
+                logger.error(f"插件 {plugin_name} 启动失败: {e}")
+        
+        return results
+    
+    def stop_all_plugins(self, **kwargs) -> None:
+        """停止所有已加载的插件
+        
+        Args:
+            **kwargs: 停止参数
+        """
+        for plugin_name in self.list_loaded_plugins():
+            try:
+                plugin = self.get_plugin(plugin_name)
+                plugin.stop(**kwargs)
+            except Exception as e:
+                logger.error(f"插件 {plugin_name} 停止失败: {e}")

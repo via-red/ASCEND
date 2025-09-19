@@ -67,6 +67,43 @@ class DailyKlineScoringPlugin(BasePlugin, IScoringStrategy, IStrategyPlugin):
         self._factor_calculators = {}
         self._current_weights = {}
     
+    def start(self, ascend_instance=None, **kwargs) -> Any:
+        """启动策略插件执行，直接返回评分结果
+        
+        Args:
+            ascend_instance: Ascend实例，用于获取数据插件
+            **kwargs: 执行参数
+                - symbols: 股票代码列表
+                - start_date: 开始日期
+                - end_date: 结束日期
+                
+        Returns:
+            评分结果字典 {股票代码: 评分结果}
+        """
+        symbols = kwargs.get('symbols', ['000001.SZ'])
+        
+        results = {}
+        for symbol in symbols:
+            if ascend_instance:
+                # 直接获取数据插件并调用其start方法
+                data_plugin = ascend_instance.get_plugin("tushare_data")
+                data_result = data_plugin.start(
+                    ascend_instance,
+                    symbols=[symbol],
+                    start_date=kwargs.get('start_date', '2023-01-01'),
+                    end_date=kwargs.get('end_date', '2023-12-31')
+                )
+                
+                # 处理数据结果
+                if isinstance(data_result, dict) and symbol in data_result:
+                    stock_data = data_result[symbol]
+                    score = self.calculate_score(stock_data)
+                    results[symbol] = score
+                else:
+                    results[symbol] = {"error": "数据获取失败"}
+        
+        return results
+    
     def get_config_schema(self) -> Optional[type]:
         """获取配置模型"""
         return DailyKlineScoringPluginConfig
@@ -90,37 +127,6 @@ class DailyKlineScoringPlugin(BasePlugin, IScoringStrategy, IStrategyPlugin):
             "trend": 0.25,
             "rsi_strength": 0.10
         })
-    
-    def execute(self, data: Any, **kwargs) -> Any:
-        """执行策略
-        
-        Args:
-            data: 输入数据 (DataFrame 或字典)
-            **kwargs: 额外参数
-            
-        Returns:
-            策略执行结果
-        """
-        try:
-            if isinstance(data, pd.DataFrame):
-                # 单股票数据
-                scores = self.calculate_score(data, **kwargs)
-                signals = self.generate_signals(scores, **kwargs)
-                return {'scores': scores, 'signals': signals}
-            elif isinstance(data, dict):
-                # 多股票数据
-                results = {}
-                for symbol, stock_data in data.items():
-                    if isinstance(stock_data, pd.DataFrame):
-                        scores = self.calculate_score(stock_data, **kwargs)
-                        signals = self.generate_signals(scores, **kwargs)
-                        results[symbol] = {'scores': scores, 'signals': signals}
-                return results
-            else:
-                raise ValueError("Unsupported data type")
-                
-        except Exception as e:
-            raise PluginError(f"Strategy execution failed: {e}")
     
     def calculate_score(self, data: Any, **kwargs) -> Dict[str, float]:
         """计算股票评分
