@@ -55,6 +55,50 @@ def main():
             for method in common_methods:
                 if hasattr(plugin, method):
                     print(f"   插件 {plugin_name} 有方法: {method}")
+            
+            # 实际执行插件功能
+            print("\n   实际执行插件功能:")
+            
+            try:
+                # 配置插件
+                if hasattr(plugin, 'configure'):
+                    # 从配置中获取插件配置
+                    plugin_config = ascend.config.get('rl_sb3', {})
+                    plugin.configure(plugin_config)
+                    print(f"   ✅ 配置插件 {plugin_name} 成功")
+                
+                # 创建测试环境
+                from test_environment import SimpleTestEnvironment
+                test_env = SimpleTestEnvironment("test_env")
+                print("   ✅ 创建测试环境成功")
+                
+                # 使用插件创建智能体
+                if hasattr(plugin, 'create_agent'):
+                    agent = plugin.create_agent(test_env)
+                    print(f"   ✅ 创建智能体成功: {agent.name}")
+                    
+                    # 执行简单的测试循环
+                    print("   🧪 执行简单测试循环...")
+                    state = test_env.reset()
+                    total_reward = 0
+                    
+                    for step in range(10):  # 测试10步
+                        action = agent.policy.get_action(state)
+                        next_state, reward, done, info = test_env.step(action)
+                        total_reward += reward
+                        
+                        print(f"      步骤 {step+1}: 动作={action}, 奖励={reward:.2f}, 总奖励={total_reward:.2f}")
+                        
+                        if done:
+                            break
+                        state = next_state
+                    
+                    print(f"   ✅ 测试完成，总奖励: {total_reward:.2f}")
+                
+            except Exception as e:
+                print(f"   ⚠️ 执行插件功能失败: {e}")
+                import traceback
+                traceback.print_exc()
         
         # 通过ascend销毁插件实例
         print("\n6. 销毁插件实例...")

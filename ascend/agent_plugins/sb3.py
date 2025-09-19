@@ -261,7 +261,7 @@ class SB3Plugin(BasePlugin):
         )
         
         # 返回智能体
-        from ..core.agents import BaseAgent
+        from ascend.core.agents import BaseAgent
 
         class SB3Agent(BaseAgent):
             """SB3代理类

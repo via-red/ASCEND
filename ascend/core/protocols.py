@@ -436,7 +436,27 @@ class IRewardFunction(Protocol):
 
 @runtime_checkable
 class IPlugin(Protocol):
-    """插件协议 - 定义扩展组件接口"""
+    """插件协议 - 所有插件必须实现统一的执行接口"""
+    
+    def start(self, ascend_instance: Optional['Ascend'] = None, **kwargs) -> Any:
+        """启动插件执行
+        
+        Args:
+            ascend_instance: 可选的Ascend实例，用于获取其他插件
+            **kwargs: 执行参数
+            
+        Returns:
+            任意类型的执行结果
+        """
+        ...
+    
+    def stop(self, **kwargs) -> None:
+        """停止插件执行
+        
+        Args:
+            **kwargs: 停止参数
+        """
+        ...
     
     def register(self, registry: 'IPluginRegistry') -> None:
         """注册插件到框架

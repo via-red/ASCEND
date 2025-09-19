@@ -7,6 +7,9 @@ import logging
 from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
 
+from ascend.core.protocols import IPlugin
+from ascend.plugin_manager.types import PluginInfo
+
 
 
 from .core.types import Config
@@ -97,7 +100,7 @@ class Ascend:
         
         return loaded
     
-    def get_plugin(self, plugin_name: str) -> Any:
+    def get_plugin(self, plugin_name: str) -> Optional[IPlugin]:
         """获取插件实例
         
         Args:
@@ -187,7 +190,7 @@ class Ascend:
         self.plugin_manager.clear_all_plugins()
         logger.info("所有插件已销毁")
     
-    def discover_available_plugins(self, refresh: bool = False) -> Dict[str, Any]:
+    def discover_available_plugins(self, refresh: bool = False) -> Dict[str, PluginInfo]:
         """发现可用插件
         
         Args:

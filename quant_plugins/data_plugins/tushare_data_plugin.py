@@ -63,6 +63,36 @@ class TushareDataPlugin(BasePlugin, IDataSourcePlugin):
         self._cache = {}
         self._last_fetch_time = {}
     
+    def start(self, ascend_instance=None, **kwargs) -> Any:
+        """启动数据插件执行，直接返回数据结果
+        
+        Args:
+            ascend_instance: 可选的Ascend实例
+            **kwargs: 执行参数
+                - symbols: 股票代码列表
+                - start_date: 开始日期
+                - end_date: 结束日期
+                - data_type: 数据类型
+                
+        Returns:
+            数据结果字典 {股票代码: 数据}
+        """
+        symbols = kwargs.get('symbols', ['000001.SZ'])
+        start_date = kwargs.get('start_date', '2023-01-01')
+        end_date = kwargs.get('end_date', '2023-12-31')
+        data_type = kwargs.get('data_type', 'daily')
+        
+        results = {}
+        for symbol in symbols:
+            try:
+                # 调用内部数据获取方法
+                data = self._fetch_data(symbol, start_date, end_date, data_type=data_type)
+                results[symbol] = data
+            except Exception as e:
+                results[symbol] = {"error": f"获取数据失败: {str(e)}"}
+        
+        return results
+    
     def get_config_schema(self) -> Optional[type]:
         """获取配置模型"""
         return TushareDataPluginConfig
@@ -92,22 +122,9 @@ class TushareDataPlugin(BasePlugin, IDataSourcePlugin):
         except Exception as e:
             raise PluginError(f"Tushare connection test failed: {e}")
     
-    def fetch_data(self, symbol: str, start_date: str, end_date: str, **kwargs) -> Any:
-        """获取股票日K线数据
-        
-        Args:
-            symbol: 股票代码 (如: 000001.SZ)
-            start_date: 开始日期 (YYYY-MM-DD)
-            end_date: 结束日期 (YYYY-MM-DD)
-            **kwargs: 额外参数
-                - data_type: 数据类型 ('daily', 'weekly', 'monthly')
-                - adjust: 复权类型 ('none', 'qfq', 'hfq')
-                
-        Returns:
-            pandas DataFrame 包含股票数据
-        """
+    def _fetch_data(self, symbol: str, start_date: str, end_date: str, **kwargs) -> Any:
+        """内部数据获取方法"""
         try:
-            # 参数处理
             data_type = kwargs.get('data_type', 'daily')
             adjust = kwargs.get('adjust', 'qfq')
             

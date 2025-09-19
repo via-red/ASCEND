@@ -37,6 +37,27 @@ class BasePlugin(IPlugin):
         self.config: Optional[Dict[str, Any]] = None
         self._initialized = False
     
+    def start(self, ascend_instance=None, **kwargs) -> Any:
+        """启动插件执行 - 子类必须重写此方法
+        
+        Args:
+            ascend_instance: 可选的Ascend实例
+            **kwargs: 执行参数
+            
+        Returns:
+            执行结果
+        """
+        raise NotImplementedError("子类必须实现start方法")
+    
+    def stop(self, **kwargs) -> None:
+        """停止插件执行 - 子类可以重写此方法
+        
+        Args:
+            **kwargs: 停止参数
+        """
+        # 默认实现调用清理方法
+        self._cleanup()
+    
     def register(self, registry: 'IPluginRegistry') -> None:
         """注册插件到框架
         
