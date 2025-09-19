@@ -84,18 +84,34 @@ class PluginDiscovery:
         builtin_plugins = get_builtin_plugins()
         
         for plugin_name, plugin_class in builtin_plugins.items():
-            # 延迟实例化，避免循环引用
-            # 使用类名作为插件名称，实例化推迟到实际加载时
-            self._discovered_plugins[plugin_name] = PluginInfo(
-                name=plugin_name,
-                version="1.0.0",  # 默认版本，实际版本在实例化时获取
-                description=f"Builtin plugin: {plugin_name}",
-                module_path=plugin_class.__module__,
-                dependencies=[],  # 默认无依赖，实际依赖在实例化时获取
-                plugin_class=plugin_class,
-                config_schema=None  # 配置模型在实例化时获取
-            )
-            logger.info(f"Registered builtin plugin class: {plugin_name}")
+            try:
+                # 实例化插件以获取真实的元数据信息
+                plugin_instance = plugin_class()
+                
+                # 使用插件实例的方法获取真实信息
+                self._discovered_plugins[plugin_name] = PluginInfo(
+                    name=plugin_instance.get_name(),
+                    version=plugin_instance.get_version(),
+                    description=plugin_instance.description,
+                    module_path=plugin_class.__module__,
+                    dependencies=plugin_instance._get_required_plugins(),
+                    plugin_class=plugin_class,
+                    config_schema=plugin_instance.get_config_schema()
+                )
+                logger.info(f"Registered builtin plugin: {plugin_instance.get_name()} v{plugin_instance.get_version()}")
+            except Exception as e:
+                logger.warning(f"Failed to instantiate builtin plugin {plugin_name}: {e}")
+                # 如果实例化失败，回退到使用类信息
+                self._discovered_plugins[plugin_name] = PluginInfo(
+                    name=plugin_name,
+                    version="1.0.0",
+                    description=f"Builtin plugin: {plugin_name}",
+                    module_path=plugin_class.__module__,
+                    dependencies=[],
+                    plugin_class=plugin_class,
+                    config_schema=None
+                )
+                logger.info(f"Registered builtin plugin class (fallback): {plugin_name}")
     
     def discover_plugins(self) -> Dict[str, PluginInfo]:
         """发现所有可用的插件
@@ -160,10 +176,10 @@ class PluginDiscovery:
         plugin_class = None
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
-            if (isinstance(attr, type) and 
-                attr != IPlugin and 
-                hasattr(attr, "__bases__") and 
-                any(base.__name__ == "IPlugin" for base in attr.__bases__)):
+            if (isinstance(attr, type) and
+                attr != BasePlugin and
+                hasattr(attr, "__bases__") and
+                BasePlugin in attr.__bases__):  # 只匹配直接继承IPlugin的类
                 plugin_class = attr
                 break
         
@@ -171,18 +187,35 @@ class PluginDiscovery:
             return None
         
         try:
+            # 实例化插件以获取真实的元数据信息
+            plugin_instance = plugin_class()
+            
+            # 使用插件实例的方法获取真实信息
             return PluginInfo(
-                name=plugin_class.__name__,
-                version="1.0.0",  # 默认版本，实际版本在实例化时获取
-                description=f"Plugin: {plugin_class.__name__}",
+                name=plugin_instance.get_name(),
+                version=plugin_instance.get_version(),
+                description=plugin_instance.description,
                 module_path=str(file_path),
-                dependencies=[],  # 默认无依赖，实际依赖在实例化时获取
+                dependencies=plugin_instance._get_required_plugins(),
                 plugin_class=plugin_class,
-                config_schema=None  # 配置模型在实例化时获取
+                config_schema=plugin_instance.get_config_schema()
             )
         except Exception as e:
             logger.warning(f"Failed to create plugin info for {module_name}: {e}")
-            return None
+            # 如果实例化失败，回退到使用类信息
+            try:
+                return PluginInfo(
+                    name=plugin_class.__name__,
+                    version="1.0.0",
+                    description=f"Plugin: {plugin_class.__name__}",
+                    module_path=str(file_path),
+                    dependencies=[],
+                    plugin_class=plugin_class,
+                    config_schema=None
+                )
+            except Exception as fallback_error:
+                logger.warning(f"Failed to create fallback plugin info for {module_name}: {fallback_error}")
+                return None
     
     def load_plugin(self, name: str) -> IPlugin:
         """加载指定的插件

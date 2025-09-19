@@ -13,6 +13,7 @@ from .core.types import Config
 from .core.exceptions import ConfigError, PluginError
 from .config import load_config as config_load_config
 from .plugin_manager import PluginManager
+from .plugin_manager.version_utils import parse_version_constraint
 
 logger = logging.getLogger(__name__)
 
@@ -77,13 +78,18 @@ class Ascend:
                 plugin = self.plugin_manager.load_plugin(plugin_spec)
                 
                 # 获取插件配置
-                plugin_config = self.config.get(plugin.get_name(), {})
+                plugin_name, _ = parse_version_constraint(plugin_spec)
+                plugin_config = self.config.get(plugin_name, {})
                 
-                # 初始化插件
-                plugin.initialize(plugin_config)
+                # 使用插件管理器的initialize_plugin方法来确保状态一致性
+                if plugin_config:
+                    self.plugin_manager.initialize_plugin(plugin_name, plugin_config)
+                else:
+                    # 如果没有配置，也要确保状态正确
+                    self.plugin_manager.initialize_plugin(plugin_name, {})
                 
-                loaded.append(plugin.get_name())
-                logger.info(f"插件加载成功: {plugin.get_name()}")
+                loaded.append(plugin_name)
+                logger.info(f"插件加载成功: {plugin_name}")
                 
             except Exception as e:
                 logger.error(f"插件加载失败 {plugin_spec}: {e}")
@@ -116,9 +122,10 @@ class Ascend:
         """
         if plugin_name:
             plugin = self.get_plugin(plugin_name)
+            status = self.plugin_manager.get_plugin_status(plugin_name)
             print(f"插件名称: {plugin_name}")
             print(f"插件类型: {type(plugin).__name__}")
-            print(f"插件状态: {getattr(plugin, 'status', 'unknown')}")
+            print(f"插件状态: {status.state.name if status else 'unknown'}")
             if hasattr(plugin, 'get_info'):
                 info = plugin.get_info()
                 print(f"插件信息: {info}")
@@ -128,9 +135,10 @@ class Ascend:
             print("=" * 50)
             for name in self.plugin_manager.list_loaded_plugins():
                 plugin = self.get_plugin(name)
+                status = self.plugin_manager.get_plugin_status(name)
                 print(f"插件名称: {name}")
                 print(f"插件类型: {type(plugin).__name__}")
-                print(f"插件状态: {getattr(plugin, 'status', 'unknown')}")
+                print(f"插件状态: {status.state.name if status else 'unknown'}")
                 if hasattr(plugin, 'get_info'):
                     info = plugin.get_info()
                     print(f"插件信息: {info}")
@@ -204,7 +212,3 @@ class Ascend:
             self.scan_and_load_plugins()
         else:
             logger.info("自动发现插件已禁用或未配置插件")
-
-
-# 创建默认的ASCEND实例
-default_ascend = Ascend()

@@ -32,7 +32,6 @@ def main():
             plugin_name = loaded_plugins[0]
             plugin = ascend.get_plugin(plugin_name)
             print(f"   ✅ 获取到插件实例: {plugin_name} ({type(plugin).__name__})")
-        
         # 打印插件信息
         print("\n4. 打印插件信息...")
         ascend.print_plugin_info()

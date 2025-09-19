@@ -296,10 +296,11 @@ class ConfigValidator:
         if not isinstance(config, dict):
             raise ValidationError("Config must be a dictionary")
         
-        required_sections = ['agent', 'environment', 'training']
-        for section in required_sections:
-            if section not in config:
-                raise ValidationError(f"Missing required section: {section}", section)
+        # 注释掉对必需部分的检查，允许配置不包含这些部分
+        # required_sections = ['agent', 'environment', 'training']
+        # for section in required_sections:
+        #     if section not in config:
+        #         raise ValidationError(f"Missing required section: {section}", section)
     
     def _validate_fields(self, config: Config, rules: Dict[str, Dict], 
                         prefix: str = '') -> None:

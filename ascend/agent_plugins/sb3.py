@@ -168,8 +168,6 @@ class SB3PolicyWrapper(IPolicy):
         self.model = self.model.load(path)
 
 
-
-@register_builtin_plugin
 class SB3Plugin(BasePlugin):
     """Stable-Baselines3 插件实现
     

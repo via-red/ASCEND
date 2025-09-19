@@ -91,6 +91,11 @@ class PluginManager:
             
             logger.info(f"正在加载插件: {plugin_spec}")
             
+            # 检查插件是否已经加载
+            if plugin_name in self.plugins:
+                logger.info(f"插件已加载，返回现有实例: {plugin_name}")
+                return self.plugins[plugin_name]
+            
             # 检查插件信息
             info = self.discovery.get_plugin_info(plugin_name)
             if not info:
@@ -123,6 +128,13 @@ class PluginManager:
                 status.state = PluginState.LOADED
                 for dep in info.dependencies:
                     status.dependencies[dep] = True
+            else:
+                # 如果状态不存在，创建新的状态
+                dependencies = getattr(info, 'dependencies', [])
+                self.plugin_status[plugin_name] = PluginStatus(
+                    state=PluginState.LOADED,
+                    dependencies={dep: True for dep in dependencies}
+                )
             
             logger.info(f"插件加载成功: {plugin_name}")
             return plugin
@@ -273,6 +285,7 @@ class PluginManager:
             PluginError: 插件加载失败
         """
         loaded_plugins = []
+        failed_plugins = []
         
         for plugin_spec in plugin_specs:
             try:
@@ -288,10 +301,10 @@ class PluginManager:
                 
             except Exception as e:
                 logger.error(f"插件加载失败 {plugin_spec}: {e}")
+                failed_plugins.append(plugin_spec)
                 continue
         
-        if len(loaded_plugins) != len(plugin_specs):
-            failed_plugins = set(plugin_specs) - {p.get_name() for p in loaded_plugins}
+        if failed_plugins:
             raise PluginError(f"插件加载失败: {', '.join(failed_plugins)}")
         
         return loaded_plugins
@@ -313,6 +326,3 @@ class PluginManager:
         """上下文管理器退出 - 清理所有插件"""
         self.clear_all_plugins()
 
-
-# 创建默认插件管理器实例
-default_manager = PluginManager()

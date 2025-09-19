@@ -102,9 +102,12 @@ class BasePlugin(IPlugin):
         """
         return None
 
-    def initialize(self) -> None:
+    def initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
         """初始化插件
         
+        Args:
+            config: 插件配置字典，可选
+            
         Raises:
             PluginError: 初始化失败
         """
@@ -112,6 +115,9 @@ class BasePlugin(IPlugin):
             return
         
         try:
+            # 如果有配置参数，先配置插件
+            if config is not None:
+                self.configure(config)
             self._initialize()
             self._initialized = True
         except Exception as e:

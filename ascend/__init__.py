@@ -63,21 +63,11 @@ from .config import (
 from .plugin_manager import (
     BasePlugin,
     PluginManager,
-    PluginDiscovery,
-    default_manager,
-    load_plugin,
-    load_plugins,
-    unload_plugin,
-    get_plugin,
-    list_loaded_plugins,
-    list_available_plugins,
-    discover_plugins,
-    resolve_plugin_dependencies,
-    check_plugin_compatibility,
+    PluginDiscovery
 )
 
 # 导入统一的ASCEND实例
-from .ascend import Ascend, default_ascend
+from .ascend import Ascend
 
 # 框架元数据
 __version__ = FRAMEWORK_VERSION
@@ -144,50 +134,12 @@ __all__ = [
     'BasePlugin',
     'PluginManager',
     'PluginDiscovery',
-    'default_manager',
-    'load_plugin',
-    'load_plugins',
-    'unload_plugin',
-    'get_plugin',
-    'list_loaded_plugins',
-    'list_available_plugins',
-    'discover_plugins',
-    'resolve_plugin_dependencies',
-    'check_plugin_compatibility',
 
     # 统一入口
     'Ascend',
-    'default_ascend',
 
     # 常量
     'FRAMEWORK_VERSION',
     'FRAMEWORK_NAME',
 ]
 
-# 框架初始化
-def initialize_framework():
-    """初始化框架
-    
-    执行框架的初始化操作，如设置默认配置、注册内置插件等。
-    """
-    # 这里可以添加框架初始化逻辑
-    pass
-
-
-def cleanup_framework():
-    """清理框架资源
-    
-    清理框架占用的资源，如关闭插件、清理缓存等。
-    """
-    # 清理所有已加载的插件
-    from .plugin_manager import default_manager
-    if default_manager is not None:
-        default_manager.clear_all_plugins()
-
-
-# 自动初始化框架
-initialize_framework()
-
-# 注册退出时的清理函数
-import atexit
-atexit.register(cleanup_framework)

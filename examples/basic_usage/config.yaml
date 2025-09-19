@@ -7,13 +7,10 @@ ascend:
 
 # 插件路径配置
 plugin_paths:
-  - "./plugins" # 相对路径插件目录
-  - "${HOME}/.ascend/plugins" # 用户级插件目录
-  - "/opt/ascend/plugins" # 系统级插件目录
+  - "/Users/zeminhuang/workspace/ASCEND/ascend/agent_plugins" # 相对路径插件目录
 plugins:
-  - "ascend_rl_sb3" # Tushare数据插件
-# Tushare数据插件配置
-ascend_rl_sb3:
+  - "rl_sb3" # Stable-Baselines3 强化学习插件
+rl_sb3:
   algorithm: "ppo" # 使用PPO算法
   policy: "MlpPolicy" # 使用多层感知机策略
   learning_rate: 0.0003

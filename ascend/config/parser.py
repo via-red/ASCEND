@@ -143,15 +143,18 @@ class ConfigParser:
         if not isinstance(config, dict):
             raise ValidationError("Config must be a dictionary")
         
-        # 检查必需的基础字段
-        if 'version' not in config:
+        # 检查必需的基础字段（支持嵌套在ascend层级下）
+        if 'version' not in config and ('ascend' not in config or 'version' not in config.get('ascend', {})):
             raise ValidationError("Missing required field: version", "version")
         
-        if 'framework' not in config:
+        if 'framework' not in config and ('ascend' not in config or 'framework' not in config.get('ascend', {})):
             raise ValidationError("Missing required field: framework", "framework")
         
         # 验证版本格式
         version = config.get('version')
+        if version is None and 'ascend' in config:
+            version = config['ascend'].get('version')
+        
         if not isinstance(version, str) or not version:
             raise ValidationError("Version must be a non-empty string", "version")
     
