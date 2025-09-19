@@ -1,62 +1,66 @@
 """
 ASCEND Plugin Manager
-Provides plugin loading, management, and lifecycle management functionality.
-Supports the following features:
-- Plugin lifecycle management (load, initialize, start, stop, unload)
-- Plugin configuration management
-- Plugin dependency management
-- Plugin status monitoring
+提供插件加载、管理和生命周期管理功能。支持以下特性：
+- 插件生命周期管理（加载、初始化、启动、停止、卸载）
+- 插件配置管理
+- 插件依赖管理
+- 插件状态监控
 """
 
-import importlib
-import pkg_resources
 import logging
 from typing import Dict, Any, List, Optional, Type
 from pathlib import Path
-from pydantic import ValidationError
 
-from ascend.plugin_manager.base import IPlugin, BasePlugin, PluginRegistry
+from ascend.plugin_manager.base import IPlugin, BasePlugin
 from ascend.plugin_manager.discovery import PluginDiscovery
 from ascend.plugin_manager.types import PluginInfo, PluginState, PluginStatus
+from ascend.plugin_manager.version_utils import parse_version_constraint, validate_plugin_version
 from ascend.core.exceptions import PluginError, PluginNotFoundError, PluginLoadError
 from ascend.core.types import Config
 
 logger = logging.getLogger(__name__)
 
-class BasePluginManager:
-    """Base plugin manager class.
+
+class PluginManager:
+    """插件管理器
     
-    Responsible for plugin lifecycle management and status maintenance.
+    负责插件的生命周期管理和状态维护。
     
     Attributes:
-        discovery: Plugin discoverer
-        plugins: Loaded plugin instances
-        plugin_status: Plugin status information
+        discovery: 插件发现器
+        plugins: 已加载的插件实例
+        plugin_status: 插件状态信息
+        config: 配置字典
     """
     
-    def __init__(self, plugin_paths: Optional[List[str]] = None) -> None:
-        """Initialize plugin manager
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """初始化插件管理器
         
         Args:
-            discovery: Plugin discovery instance (optional)
-            plugin_paths: Plugin search paths (optional, used if discovery is None)
+            config: 配置字典（可选）
         """
-        self.discovery = PluginDiscovery(plugin_paths)
-            
+        self.config = config or {}
+        self.discovery = PluginDiscovery(config=config)
         self.plugins: Dict[str, IPlugin] = {}
         self.plugin_status: Dict[str, PluginStatus] = {}
-        # 自动发现内置插件
+        
+        # 自动发现插件
         self.discover_plugins()
         
-    def discover_plugins(self) -> Dict[str, PluginInfo]:
-        """Discover available plugins
-
+    def discover_plugins(self, refresh: bool = False) -> Dict[str, PluginInfo]:
+        """发现可用插件
+        
+        Args:
+            refresh: 是否刷新缓存
+            
         Returns:
-            Dictionary of plugin information
+            插件信息字典
         """
-        # 通过discovery机制发现所有插件（包括内置插件）
+        if refresh:
+            self.discovery.clear_cache()
+            
         discovered = self.discovery.discover_plugins()
-        logger.info(f"Discovered plugins: {list(discovered.keys())}")
+        logger.info(f"发现插件: {list(discovered.keys())}")
         
         # 更新每个插件的状态
         for name, info in discovered.items():
@@ -66,97 +70,105 @@ class BasePluginManager:
                     state=PluginState.DISCOVERED,
                     dependencies={dep: False for dep in dependencies}
                 )
-                logger.info(f"Added plugin status for: {name}")
                 
         return discovered
     
-    def load_plugin(self, name: str) -> IPlugin:
-        """Load a plugin
+    def load_plugin(self, plugin_spec: str) -> IPlugin:
+        """加载插件
         
         Args:
-            name: Plugin name
+            plugin_spec: 插件规格（名称或名称:版本约束）
             
         Returns:
-            Plugin instance
+            插件实例
             
         Raises:
-            PluginError: If plugin loading fails
+            PluginError: 插件加载失败
         """
         try:
-            logger.info(f"Attempting to load plugin: {name}")
-            logger.info(f"Currently discovered plugins: {list(self.discovery._discovered_plugins.keys())}")
+            # 解析插件名称和版本约束
+            plugin_name, version_constraint = parse_version_constraint(plugin_spec)
             
-            # Check plugin info
-            info = self.discovery._discovered_plugins.get(name)
+            logger.info(f"正在加载插件: {plugin_spec}")
+            
+            # 检查插件信息
+            info = self.discovery.get_plugin_info(plugin_name)
             if not info:
-                logger.error(f"Plugin {name} not found in discovered plugins")
-                raise PluginError(f"Plugin {name} not found")
-                
+                raise PluginError(f"插件未找到: {plugin_name}")
+            
+            # 先加载依赖
             for dep in info.dependencies:
                 if dep not in self.plugins:
                     self.load_plugin(dep)
             
-            # Load plugin
-            info = self.discovery._discovered_plugins[name]
+            # 加载插件
             plugin_class = info.plugin_class
-            if plugin_class:
-                plugin = plugin_class()
-                self.plugins[name] = plugin
-            else:
-                raise PluginError(f"No plugin class found for {name}")
+            if not plugin_class:
+                raise PluginError(f"插件类未找到: {plugin_name}")
+                
+            plugin = plugin_class()
             
-            # Update status
-            status = self.plugin_status.get(name)
+            # 验证版本约束
+            if version_constraint:
+                plugin_version = getattr(plugin, 'version', '0.0.0')
+                if not validate_plugin_version({'version': plugin_version}, version_constraint):
+                    raise PluginError(f"插件 {plugin_name} 版本 {plugin_version} "
+                                    f"不满足约束: {version_constraint}")
+            
+            self.plugins[plugin_name] = plugin
+            
+            # 更新状态
+            status = self.plugin_status.get(plugin_name)
             if status:
                 status.state = PluginState.LOADED
                 for dep in info.dependencies:
                     status.dependencies[dep] = True
             
+            logger.info(f"插件加载成功: {plugin_name}")
             return plugin
             
         except Exception as e:
-            if name in self.plugin_status:
-                self.plugin_status[name].state = PluginState.ERROR
-                self.plugin_status[name].error = str(e)
-            raise PluginError(f"Failed to load plugin {name}: {e}")
+            if plugin_name in self.plugin_status:
+                self.plugin_status[plugin_name].state = PluginState.ERROR
+                self.plugin_status[plugin_name].error = str(e)
+            raise PluginError(f"插件加载失败 {plugin_spec}: {e}")
     
-    def initialize_plugin(self, name: str, config: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize plugin
+    def initialize_plugin(self, plugin_name: str, config: Optional[Dict[str, Any]] = None) -> None:
+        """初始化插件
         
         Args:
-            name: Plugin name
-            config: Plugin configuration
+            plugin_name: 插件名称
+            config: 插件配置
         """
-        plugin = self.plugins.get(name)
+        plugin = self.plugins.get(plugin_name)
         if not plugin:
-            raise PluginError(f"Plugin {name} not loaded")
+            raise PluginError(f"插件未加载: {plugin_name}")
             
         try:
             if config:
                 plugin.configure(config)
                 
-            status = self.plugin_status[name]
+            status = self.plugin_status[plugin_name]
             status.state = PluginState.INITIALIZED
             status.config = config
             
         except Exception as e:
-            self.plugin_status[name].state = PluginState.ERROR
-            self.plugin_status[name].error = str(e)
-            raise PluginError(f"Failed to initialize plugin {name}: {e}")
+            self.plugin_status[plugin_name].state = PluginState.ERROR
+            self.plugin_status[plugin_name].error = str(e)
+            raise PluginError(f"插件初始化失败 {plugin_name}: {e}")
     
-    def start_plugin(self, name: str) -> None:
-        """Start plugin
+    def start_plugin(self, plugin_name: str) -> None:
+        """启动插件
         
         Args:
-            name: Plugin name
+            plugin_name: 插件名称
         """
-        status = self.plugin_status.get(name)
+        status = self.plugin_status.get(plugin_name)
         if not status or status.state != PluginState.INITIALIZED:
-            raise PluginError(f"Plugin {name} not initialized")
+            raise PluginError(f"插件未初始化: {plugin_name}")
         
         try:
-            # Call start method if available
-            plugin = self.plugins[name]
+            plugin = self.plugins[plugin_name]
             if hasattr(plugin, 'start') and callable(getattr(plugin, 'start')):
                 plugin.start()
             
@@ -165,21 +177,20 @@ class BasePluginManager:
         except Exception as e:
             status.state = PluginState.ERROR
             status.error = str(e)
-            raise PluginError(f"Failed to start plugin {name}: {e}")
+            raise PluginError(f"插件启动失败 {plugin_name}: {e}")
     
-    def stop_plugin(self, name: str) -> None:
-        """Stop plugin
+    def stop_plugin(self, plugin_name: str) -> None:
+        """停止插件
         
         Args:
-            name: Plugin name
+            plugin_name: 插件名称
         """
-        status = self.plugin_status.get(name)
+        status = self.plugin_status.get(plugin_name)
         if not status or status.state != PluginState.RUNNING:
-            raise PluginError(f"Plugin {name} not running")
+            raise PluginError(f"插件未运行: {plugin_name}")
         
         try:
-            # Call stop method if available
-            plugin = self.plugins[name]
+            plugin = self.plugins[plugin_name]
             if hasattr(plugin, 'stop') and callable(getattr(plugin, 'stop')):
                 plugin.stop()
             
@@ -188,194 +199,120 @@ class BasePluginManager:
         except Exception as e:
             status.state = PluginState.ERROR
             status.error = str(e)
-            raise PluginError(f"Failed to stop plugin {name}: {e}")
+            raise PluginError(f"插件停止失败 {plugin_name}: {e}")
     
-    def unload_plugin(self, name: str) -> None:
-        """Unload plugin
+    def unload_plugin(self, plugin_name: str) -> None:
+        """卸载插件
         
         Args:
-            name: Plugin name
+            plugin_name: 插件名称
         """
-        if name not in self.plugins:
+        if plugin_name not in self.plugins:
             return
             
-        # Stop plugin first
-        status = self.plugin_status.get(name)
+        # 先停止插件
+        status = self.plugin_status.get(plugin_name)
         if status and status.state == PluginState.RUNNING:
-            self.stop_plugin(name)
+            self.stop_plugin(plugin_name)
         
-        # Unload plugin
-        self.discovery.unload_plugin(name)
-        del self.plugins[name]
-        if name in self.plugin_status:
-            del self.plugin_status[name]
+        # 卸载插件
+        self.discovery.unload_plugin(plugin_name)
+        del self.plugins[plugin_name]
+        if plugin_name in self.plugin_status:
+            del self.plugin_status[plugin_name]
     
-    def get_plugin(self, name: str) -> Optional[IPlugin]:
-        """Get plugin instance
+    def get_plugin(self, plugin_name: str) -> Optional[IPlugin]:
+        """获取插件实例
         
         Args:
-            name: Plugin name
+            plugin_name: 插件名称
             
         Returns:
-            Plugin instance or None
+            插件实例或None
         """
-        return self.plugins.get(name)
+        return self.plugins.get(plugin_name)
     
-    def get_plugin_status(self, name: str) -> Optional[PluginStatus]:
-        """Get plugin status
+    def get_plugin_status(self, plugin_name: str) -> Optional[PluginStatus]:
+        """获取插件状态
         
         Args:
-            name: Plugin name
+            plugin_name: 插件名称
             
         Returns:
-            Plugin status or None
+            插件状态或None
         """
-        return self.plugin_status.get(name)
+        return self.plugin_status.get(plugin_name)
     
-    def list_plugins(self) -> List[str]:
-        """List all loaded plugins
+    def list_loaded_plugins(self) -> List[str]:
+        """列出所有已加载的插件
         
         Returns:
-            List of plugin names
+            插件名称列表
         """
         return list(self.plugins.keys())
-
-class PluginManager(BasePluginManager):
-    """Plugin manager implementation"""
-    
-    def __init__(self,  plugin_paths: Optional[List[str]] = None):
-        super().__init__(plugin_paths)
-        self.registry = PluginRegistry()
-        self._loaded_plugins: Dict[str, BasePlugin] = {}
-        self._entry_points_cache: Optional[Dict[str, Any]] = None
-    
-    def discover_plugins(self) -> Dict[str, PluginInfo]:
-        """Discover available plugins"""
-        discovered = super().discover_plugins()
-        self._entry_points_cache = None  # Clear cache to force rediscovery
-        return discovered
-
-    def _discover_plugin_entry_point(self, plugin_name: str) -> Optional[Any]:
-        """Discover plugin entry point
-        
-        Args:
-            plugin_name: Plugin name
-            
-        Returns:
-            Entry point instance or None
-        """
-        entry_points = self._discover_all_entry_points()
-        return entry_points.get(plugin_name)
-    
-    def _discover_all_entry_points(self) -> Dict[str, Any]:
-        """Discover all plugin entry points
-        
-        Returns:
-            Dictionary of entry points
-        """
-        if self._entry_points_cache is not None:
-            return self._entry_points_cache
-        
-        entry_points = {}
-        try:
-            for entry_point in pkg_resources.iter_entry_points('ascend.plugins'):
-                entry_points[entry_point.name] = entry_point
-        except Exception as e:
-            # Use fallback discovery if pkg_resources is not available
-            entry_points = self._discover_entry_points_fallback()
-        
-        self._entry_points_cache = entry_points
-        return entry_points
-    
-    def _discover_entry_points_fallback(self) -> Dict[str, Any]:
-        """Fallback entry point discovery mechanism
-        
-        Returns:
-            Dictionary of entry points
-        """
-        # Implement custom plugin discovery logic here
-        # For example: scan specific directories, read config files, etc.
-        return {}
-    
-    def __contains__(self, plugin_name: str) -> bool:
-        """Check if plugin is loaded
-        
-        Args:
-            plugin_name: Plugin name
-            
-        Returns:
-            True if loaded, False otherwise
-        """
-        return plugin_name in self._loaded_plugins
-    
-    def __len__(self) -> int:
-        """Get number of loaded plugins
-        
-        Returns:
-            Number of plugins
-        """
-        return len(self._loaded_plugins)
     
     def list_available_plugins(self) -> List[str]:
-        """List all available plugins (discovered but not necessarily loaded)
+        """列出所有可用插件（已发现但未必加载）
         
         Returns:
-            List of available plugin names
+            可用插件名称列表
         """
         return list(self.discovery.discovered_plugins.keys())
     
-    def load_plugins(self, plugin_names: List[str], configs: Dict[str, Config] = None) -> List[BasePlugin]:
-        """Load multiple plugins
+    def load_plugins(self, plugin_specs: List[str], configs: Dict[str, Config] = None) -> List[BasePlugin]:
+        """批量加载插件
         
         Args:
-            plugin_names: List of plugin names to load
-            configs: Dictionary of plugin configurations (optional)
+            plugin_specs: 插件规格列表
+            configs: 插件配置字典（可选）
             
         Returns:
-            List of loaded plugin instances
+            加载的插件实例列表
             
         Raises:
-            PluginError: If any plugin loading fails
+            PluginError: 插件加载失败
         """
         loaded_plugins = []
         
-        for plugin_name in plugin_names:
+        for plugin_spec in plugin_specs:
             try:
-                # Load the plugin
-                plugin = self.load_plugin(plugin_name)
+                plugin = self.load_plugin(plugin_spec)
                 
-                # Initialize with configuration if provided
+                # 初始化插件配置
+                plugin_name, _ = parse_version_constraint(plugin_spec)
                 if configs and plugin_name in configs:
                     self.initialize_plugin(plugin_name, configs[plugin_name])
                 
                 loaded_plugins.append(plugin)
-                logger.info(f"Successfully loaded plugin: {plugin_name}")
+                logger.info(f"成功加载插件: {plugin_spec}")
                 
             except Exception as e:
-                logger.error(f"Failed to load plugin {plugin_name}: {e}")
-                # Continue loading other plugins even if one fails
-                # The error will be raised after attempting all plugins
+                logger.error(f"插件加载失败 {plugin_spec}: {e}")
                 continue
         
-        if len(loaded_plugins) != len(plugin_names):
-            failed_plugins = set(plugin_names) - {p.get_name() for p in loaded_plugins}
-            raise PluginError(f"Failed to load plugins: {', '.join(failed_plugins)}")
+        if len(loaded_plugins) != len(plugin_specs):
+            failed_plugins = set(plugin_specs) - {p.get_name() for p in loaded_plugins}
+            raise PluginError(f"插件加载失败: {', '.join(failed_plugins)}")
         
         return loaded_plugins
-
-    def __enter__(self):
-        """Context manager entry"""
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - cleanup all plugins"""
-        self.clear_all_plugins()
     
     def clear_all_plugins(self) -> None:
-        """Clear all loaded plugins"""
-        for plugin_name in list(self._loaded_plugins.keys()):
+        """清除所有已加载的插件"""
+        for plugin_name in list(self.plugins.keys()):
             try:
                 self.unload_plugin(plugin_name)
             except PluginError:
-                # Ignore unload errors and continue with other plugins
+                # 忽略卸载错误，继续处理其他插件
                 continue
+    
+    def __enter__(self):
+        """上下文管理器入口"""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """上下文管理器退出 - 清理所有插件"""
+        self.clear_all_plugins()
+
+
+# 创建默认插件管理器实例
+default_manager = PluginManager()

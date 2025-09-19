@@ -9,25 +9,16 @@ from typing import Any, Dict, List, Optional, Tuple
 from ascend.core.protocols import IPlugin
 from ascend.core.exceptions import PluginError, PluginNotFoundError, PluginLoadError
 from ascend.core.types import Config
-from ascend.plugin_manager.env_utils import load_env_file
 
-# 先导入基础类
-from .base import BasePlugin, PluginRegistry
-
-# 导入管理器类
+# 导入基础类
+from .base import BasePlugin
 from .manager import PluginManager
-from .discovery import PluginDiscovery, discover_and_load_plugins, auto_discover_plugins
+from .discovery import PluginDiscovery
 
-# 创建默认插件发现器和管理器实例
-from .manager import PluginManager
-
-# 先创建discovery实例，然后传入manager
-default_manager = PluginManager()
 
 __all__ = [
     # 基础类
     'BasePlugin',
-    'PluginRegistry',
     'PluginManager', 
     'PluginDiscovery',
     
@@ -43,16 +34,25 @@ __all__ = [
     'PluginLoadError',
     
     # 便捷函数
-    'discover_and_load_plugins',
-    'auto_discover_plugins',
+    'load_plugin',
+    'load_plugins',
+    'unload_plugin',
+    'get_plugin',
+    'list_loaded_plugins',
+    'list_available_plugins',
+    'configure_plugin',
+    'clear_all_plugins',
+    'discover_plugins',
+    'resolve_plugin_dependencies',
+    'check_plugin_compatibility',
 ]
 
 # 导出常用函数
-def load_plugin(plugin_name: str, config: Config = None) -> BasePlugin:
+def load_plugin(plugin_spec: str, config: Optional[Config] = None) -> BasePlugin:
     """快速加载插件的便捷函数
     
     Args:
-        plugin_name: 插件名称
+        plugin_spec: 插件规格（名称或名称:版本约束）
         config: 插件配置（可选）
         
     Returns:
@@ -61,14 +61,17 @@ def load_plugin(plugin_name: str, config: Config = None) -> BasePlugin:
     Raises:
         PluginError: 插件加载失败
     """
-    return default_manager.load_plugin(plugin_name, config)
+    plugin = default_manager.load_plugin(plugin_spec)
+    if config:
+        default_manager.initialize_plugin(plugin.get_name(), config)
+    return plugin
 
 
-def load_plugins(plugin_names: List[str], configs: Dict[str, Config] = None) -> List[BasePlugin]:
+def load_plugins(plugin_specs: List[str], configs: Dict[str, Config] = None) -> List[BasePlugin]:
     """批量加载插件的便捷函数
     
     Args:
-        plugin_names: 插件名称列表
+        plugin_specs: 插件规格列表
         configs: 插件配置字典（可选）
         
     Returns:
@@ -77,7 +80,7 @@ def load_plugins(plugin_names: List[str], configs: Dict[str, Config] = None) -> 
     Raises:
         PluginError: 插件加载失败
     """
-    return default_manager.load_plugins(plugin_names, configs)
+    return default_manager.load_plugins(plugin_specs, configs)
 
 
 def unload_plugin(plugin_name: str) -> None:
@@ -113,11 +116,11 @@ def list_loaded_plugins() -> List[str]:
     return default_manager.list_loaded_plugins()
 
 
-def list_available_plugins() -> List[Dict[str, Any]]:
+def list_available_plugins() -> List[str]:
     """列出可用插件的便捷函数
     
     Returns:
-        插件信息列表
+        可用插件名称列表
     """
     return default_manager.list_available_plugins()
 
@@ -132,7 +135,7 @@ def configure_plugin(plugin_name: str, config: Config) -> None:
     Raises:
         PluginError: 配置失败
     """
-    default_manager.configure_plugin(plugin_name, config)
+    default_manager.initialize_plugin(plugin_name, config)
 
 
 def clear_all_plugins() -> None:
@@ -149,9 +152,7 @@ def discover_plugins(refresh: bool = False) -> Dict[str, Any]:
     Returns:
         插件信息字典
     """
-    if refresh:
-        default_manager.discovery.clear_cache()
-    return default_manager.discovery.discover_plugins()
+    return default_manager.discover_plugins(refresh=refresh)
 
 
 def resolve_plugin_dependencies(plugin_names: List[str]) -> List[str]:
@@ -179,3 +180,7 @@ def check_plugin_compatibility(plugin_names: List[str]) -> Tuple[bool, List[str]
         (是否兼容, 不兼容的插件列表)
     """
     return default_manager.discovery.check_compatibility(plugin_names)
+
+
+# 创建默认插件管理器实例
+default_manager = PluginManager()

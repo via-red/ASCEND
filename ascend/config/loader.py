@@ -400,6 +400,11 @@ class ConfigLoader(BaseConfigLoader):
         return {
             'version': '1.0.0',
             'framework': 'ascend',
+            'plugin_paths': [
+                './plugins',
+                '${HOME}/.ascend/plugins',
+                '/opt/ascend/plugins'
+            ],
             'agent': {
                 'type': 'base_agent',
                 'config': {

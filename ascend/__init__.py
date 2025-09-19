@@ -62,7 +62,6 @@ from .config import (
 
 from .plugin_manager import (
     BasePlugin,
-    PluginRegistry,
     PluginManager,
     PluginDiscovery,
     default_manager,
@@ -72,12 +71,13 @@ from .plugin_manager import (
     get_plugin,
     list_loaded_plugins,
     list_available_plugins,
-    discover_and_load_plugins,
-    auto_discover_plugins,
     discover_plugins,
     resolve_plugin_dependencies,
     check_plugin_compatibility,
 )
+
+# 导入统一的ASCEND实例
+from .ascend import Ascend, default_ascend
 
 # 框架元数据
 __version__ = FRAMEWORK_VERSION
@@ -142,23 +142,23 @@ __all__ = [
     
     # 插件模块
     'BasePlugin',
-    'PluginRegistry',
     'PluginManager',
     'PluginDiscovery',
     'default_manager',
-    'default_discovery',
     'load_plugin',
     'load_plugins',
     'unload_plugin',
     'get_plugin',
     'list_loaded_plugins',
     'list_available_plugins',
-    'discover_and_load_plugins',
-    'auto_discover_plugins',
     'discover_plugins',
     'resolve_plugin_dependencies',
     'check_plugin_compatibility',
-    
+
+    # 统一入口
+    'Ascend',
+    'default_ascend',
+
     # 常量
     'FRAMEWORK_VERSION',
     'FRAMEWORK_NAME',

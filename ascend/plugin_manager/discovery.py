@@ -16,9 +16,8 @@ import sys
 from typing import Dict, List, Optional, Set, Any, Tuple, Type, TYPE_CHECKING
 
 from ascend.plugin_manager.env_utils import get_env_var
+from ascend.plugin_manager.version_utils import parse_version_constraint, validate_plugin_version
 
-if TYPE_CHECKING:
-    from .manager import PluginManager
 from pathlib import Path
 from dataclasses import dataclass
 from pydantic import BaseModel, Field, ValidationError
@@ -41,17 +40,13 @@ class PluginDiscovery:
         loaded_plugins: 已加载的插件实例
     """
     
-    def __init__(self, plugin_paths: Optional[List[str]] = None,
-                 env_file_path: Optional[str] = None) -> None:
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
         """初始化插件发现器
         
         Args:
-            plugin_paths: 插件搜索路径列表（优先于环境变量中的路径）
-            env_file_path: 自定义.env文件路径，如果为None则自动搜索
+            config: 配置字典，用于获取plugin_paths配置
         """
-        self.plugin_paths = plugin_paths or []
-        self.env_file_path = env_file_path
-        self._add_default_paths()
+        self.config = config or {}
         self._discovered_plugins: Dict[str, PluginInfo] = {}
         self._loaded_plugins: Dict[str, IPlugin] = {}
         self._dependency_graph: Dict[str, Set[str]] = {}
@@ -65,6 +60,22 @@ class PluginDiscovery:
     def loaded_plugins(self) -> Dict[str, IPlugin]:
         """已加载的插件实例"""
         return self._loaded_plugins
+
+    @property
+    def plugin_paths(self) -> List[str]:
+        """插件搜索路径"""
+        # 从配置中获取插件路径，如果没有配置则使用默认路径
+        config_paths = self.config.get('plugin_paths', [])
+        if config_paths:
+            return config_paths
+        
+        # 默认插件路径
+        return [
+            "./plugins",
+            "./quant_plugins",
+            str(Path.home() / ".ascend" / "plugins"),
+            "/opt/ascend/plugins"
+        ]
 
     def _register_builtin_plugins(self) -> None:
         """注册内置插件"""
@@ -85,32 +96,6 @@ class PluginDiscovery:
                 config_schema=None  # 配置模型在实例化时获取
             )
             logger.info(f"Registered builtin plugin class: {plugin_name}")
-        
-    def _add_default_paths(self) -> None:
-        """添加默认的插件搜索路径"""
-    
-        # 从环境变量读取插件路径（支持.env文件和系统环境变量）
-        env_plugin_paths = get_env_var('ASCEND_PLUGIN_PATHS', '', self.env_file_path)
-        if env_plugin_paths:
-            for path in env_plugin_paths.split(os.pathsep):
-                if path.strip():
-                    plugin_path = Path(path.strip())
-                    if plugin_path.exists():
-                        # 如果已经有显式传入的路径，则不添加重复的路径
-                        path_str = str(plugin_path)
-                        if path_str not in self.plugin_paths:
-                            self.plugin_paths.append(path_str)
-                            logger.info(f"Added plugin path from environment: {plugin_path}")
-                        else:
-                            logger.debug(f"Plugin path already exists, skipping: {plugin_path}")
-        # 首先检查是否已经有通过参数传入的路径
-        has_explicit_paths = len(self.plugin_paths) > 1  # 大于1是因为上面已经添加了当前目录
-        # 添加用户级的插件目录（除非已经有显式传入的路径）
-        if not has_explicit_paths:
-               # 添加当前包的plugins目录
-            current_dir = Path(__file__).parent
-            self.plugin_paths.append(str(current_dir))
-        
     
     def discover_plugins(self) -> Dict[str, PluginInfo]:
         """发现所有可用的插件
@@ -386,66 +371,3 @@ class PluginDiscovery:
         self._dependency_graph.clear()
 
 
-
-def discover_and_load_plugins(plugin_names: List[str],
-                             configs: Optional[Dict[str, Config]] = None,
-                             manager: Optional[Any] = None,
-                             discovery: Optional[Any] = None) -> List[BasePlugin]:
-    """发现并加载插件（便捷函数）
-    
-    Args:
-        plugin_names: 插件名称列表
-        configs: 插件配置字典
-        manager: 插件管理器实例（可选）
-        discovery: 插件发现器实例（可选）
-        
-    Returns:
-        加载的插件实例列表
-        
-    Raises:
-        PluginError: 插件加载失败
-    """
-    # 使用默认实例
-    from . import default_manager, default_discovery
-    manager = manager or default_manager
-    discovery = discovery or default_discovery
-    
-    configs = configs or {}
-    
-    # 解析依赖关系
-    resolved_plugins = discovery.resolve_dependencies(plugin_names)
-    
-    # 检查兼容性
-    compatible, incompatible = discovery.check_compatibility(resolved_plugins)
-    if not compatible:
-        raise PluginError(f"Incompatible plugins: {incompatible}")
-    
-    # 加载插件
-    return manager.load_plugins(resolved_plugins, configs)
-
-
-def auto_discover_plugins(config: Config,
-                         manager: Optional[Any] = None,
-                         discovery: Optional[Any] = None) -> List[BasePlugin]:
-    """自动发现并加载配置中指定的插件
-    
-    Args:
-        config: 配置字典
-        manager: 插件管理器实例（可选）
-        discovery: 插件发现器实例（可选）
-        
-    Returns:
-        加载的插件实例列表
-        
-    Raises:
-        PluginError: 插件加载失败
-    """
-    # 使用默认实例
-    from . import default_manager, default_discovery
-    manager = manager or default_manager
-    discovery = discovery or default_discovery
-    
-    plugin_names = config.get('plugins', [])
-    plugin_configs = config.get('plugin_configs', {})
-    
-    return discover_and_load_plugins(plugin_names, plugin_configs, manager, discovery)
