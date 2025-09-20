@@ -59,7 +59,7 @@ class AshareDataPlugin(BasePlugin, IDataSourcePlugin):
         """初始化 Ashare 客户端"""
         try:
             # 导入本地 Ashare 模块
-            from .ashare import get_price
+            from .Ashare import get_price
             self._ashare_module = get_price
             
             # 测试连接
@@ -79,6 +79,38 @@ class AshareDataPlugin(BasePlugin, IDataSourcePlugin):
             pass
         except Exception as e:
             raise PluginError(f"Ashare connection test failed: {e}")
+    
+    def start(self, ascend_instance=None, **kwargs) -> Any:
+        """启动数据插件执行，直接返回数据结果
+        
+        Args:
+            ascend_instance: 可选的Ascend实例
+            **kwargs: 执行参数
+                - symbols: 股票代码列表
+                - start_date: 开始日期
+                - end_date: 结束日期
+                - data_type: 数据类型
+                - frequency: 数据频率
+                
+        Returns:
+            数据结果字典 {股票代码: 数据}
+        """
+        symbols = kwargs.get('symbols', ['000001.SZ'])
+        start_date = kwargs.get('start_date', '2023-01-01')
+        end_date = kwargs.get('end_date', '2023-12-31')
+        data_type = kwargs.get('data_type', 'daily')
+        frequency = kwargs.get('frequency', '1d')
+        
+        results = {}
+        for symbol in symbols:
+            try:
+                # 调用内部数据获取方法
+                data = self.fetch_data(symbol, start_date, end_date, data_type=data_type, frequency=frequency)
+                results[symbol] = data
+            except Exception as e:
+                results[symbol] = {"error": f"获取数据失败: {str(e)}"}
+        
+        return results
     
     def fetch_data(self, symbol: str, start_date: str, end_date: str, **kwargs) -> Any:
         """获取股票日K线数据
@@ -125,7 +157,7 @@ class AshareDataPlugin(BasePlugin, IDataSourcePlugin):
             df = self._preprocess_data(df, start_date, end_date)
             
             # 缓存数据
-            if self.config.get('cache_enabled', True):
+            if self.config is not None and self.config.get('cache_enabled', True):
                 self._cache[cache_key] = df
                 self._last_fetch_time[cache_key] = datetime.now()
             
@@ -201,6 +233,8 @@ class AshareDataPlugin(BasePlugin, IDataSourcePlugin):
     
     def _should_use_cache(self, cache_key: str) -> bool:
         """检查是否应该使用缓存"""
+        if self.config is None:
+            return False
         if not self.config.get('cache_enabled', True):
             return False
         
@@ -210,7 +244,11 @@ class AshareDataPlugin(BasePlugin, IDataSourcePlugin):
         if cache_key not in self._last_fetch_time:
             return False
         
-        cache_duration = self.config.get('cache_duration', 3600)
+        # 检查 config 是否为 None，如果是则使用默认值
+        if self.config is None:
+            cache_duration = 3600
+        else:
+            cache_duration = self.config.get('cache_duration', 3600)
         time_diff = (datetime.now() - self._last_fetch_time[cache_key]).total_seconds()
         
         return time_diff < cache_duration

@@ -172,9 +172,19 @@ class PluginDiscovery:
             
         module = importlib.util.module_from_spec(spec)
         try:
+            # 在执行模块前添加当前工作目录到 sys.path
+            original_sys_path = sys.path.copy()
+            sys.path.insert(0, str(Path.cwd()))
+            
             spec.loader.exec_module(module)
+            
+            # 恢复原始 sys.path
+            sys.path = original_sys_path
         except Exception as e:
             logger.warning(f"Failed to execute module {module_name}: {e}")
+            # 确保在异常情况下也恢复 sys.path
+            if 'original_sys_path' in locals():
+                sys.path = original_sys_path
             return None
         
         # 查找插件类

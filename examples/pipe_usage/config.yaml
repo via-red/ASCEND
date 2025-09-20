@@ -9,9 +9,16 @@ ascend:
 plugin_paths:
   - "C:\\Users\\viare\\vscodeproject\\ASCEND\\quant_plugins" # 相对于项目根目录的插件目录
 plugins:
-  - "ashare_data" # ashre数据插件
-  - "warehouse_storage" #  仓库存储插件
+  - "ashare_data" # ashare数据插件
+  - "tushare_data" # tushare数据插件
+  - "daily_kline_scoring" # 日K线评分策略插件
+  - "warehouse_storage" # 仓库存储插件
 ashare_data:
+  timeout: 30
+  max_retries: 3
+  cache_enabled: true
+  cache_duration: 3600
+  use_proxy: false
 
 warehouse_storage:
   db_path: "data/warehouse.db" # 数据库存储路径
