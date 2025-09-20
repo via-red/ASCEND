@@ -18,7 +18,7 @@ import talib
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import IScoringStrategy, IStrategyPlugin
+from quant_plugins.strategy_plugins import IScoringStrategy, IStrategyPlugin
 
 # 插件配置模型
 class DailyKlineScoringPluginConfig(BaseModel):

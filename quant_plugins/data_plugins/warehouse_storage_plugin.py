@@ -21,7 +21,7 @@ import shutil
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import IDataStoragePlugin
+from quant_plugins.data_plugins import IDataStoragePlugin
 
 # 插件配置模型
 class WarehouseStoragePluginConfig(BaseModel):

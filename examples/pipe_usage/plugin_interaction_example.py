@@ -5,19 +5,20 @@ ASCEND插件交互使用示例
 """
 
 from ascend import Ascend
+from pathlib import Path
 
 def main():
     print("🚀 ASCEND插件交互使用示例")
     print("=" * 50)
-    
+    config_path = Path(__file__).parent / "config.yaml"
     # 初始化框架
-    ascend = Ascend(config_path="examples/basic_usage/config.yaml")
+    ascend = Ascend(config_path=config_path)
     
     print("1. 直接调用数据插件")
     print("-" * 30)
     
     # 方式1：直接获取插件并调用start
-    data_plugin = ascend.get_plugin("tushare_data")
+    data_plugin = ascend.get_plugin("ashare_data")
     data_results = data_plugin.start(
         ascend,
         symbols=["000001.SZ", "600036.SH"],

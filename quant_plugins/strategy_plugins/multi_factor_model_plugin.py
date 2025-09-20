@@ -18,7 +18,7 @@ import warnings
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import IFactorModel, IStrategyPlugin
+from quant_plugins.strategy_plugins import IFactorModel, IStrategyPlugin
 
 # 插件配置模型
 class MultiFactorModelPluginConfig(BaseModel):

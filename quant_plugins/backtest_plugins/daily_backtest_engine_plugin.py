@@ -19,7 +19,7 @@ import warnings
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import IBacktestEngine, IRiskManager
+from quant_plugins.backtest_plugins import IBacktestEngine, IRiskManager
 
 # 插件配置模型
 class DailyBacktestEnginePluginConfig(BaseModel):

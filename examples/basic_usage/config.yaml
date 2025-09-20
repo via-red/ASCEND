@@ -7,7 +7,7 @@ ascend:
 
 # 插件路径配置
 plugin_paths:
-  - "/Users/zeminhuang/workspace/ASCEND/ascend/agent_plugins" # 相对路径插件目录
+  - "C:\\Users\\viare\\vscodeproject\\ASCEND\\ascend\\agent_plugins" # 相对于项目根目录的插件目录
 plugins:
   - "rl_sb3" # Stable-Baselines3 强化学习插件
 rl_sb3:

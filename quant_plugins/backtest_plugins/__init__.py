@@ -4,7 +4,6 @@
 
 包含以下插件:
 - 回测引擎: DailyBacktestEnginePlugin
-- 性能评估: PerformanceEvaluatorPlugin
 
 协议接口:
 - IBacktestEngine: 回测引擎协议
@@ -144,5 +143,5 @@ __all__ = [
     
     # 具体插件
     'DailyBacktestEnginePlugin',
-    'PerformanceEvaluatorPlugin'
+    
 ]

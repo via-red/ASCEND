@@ -18,7 +18,7 @@ import uuid
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import ITrader, IRiskController
+from quant_plugins.execution_plugins import ITrader, IRiskController
 
 # 插件配置模型
 class SimTraderPluginConfig(BaseModel):

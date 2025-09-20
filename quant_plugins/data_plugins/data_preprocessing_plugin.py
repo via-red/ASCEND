@@ -18,7 +18,7 @@ from sklearn.impute import SimpleImputer
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import IDataProcessorPlugin
+from  quant_plugins.data_plugins import IDataProcessorPlugin
 
 # 插件配置模型
 class DataPreprocessingPluginConfig(BaseModel):

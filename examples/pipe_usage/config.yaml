@@ -1,0 +1,17 @@
+# ASCEND基础示例配置文件
+ascend:
+  version: "1.0.0"
+  framework: "ascend"
+# 插件配置（支持版本约束）
+
+
+# 插件路径配置
+plugin_paths:
+  - "C:\\Users\\viare\\vscodeproject\\ASCEND\\quant_plugins" # 相对于项目根目录的插件目录
+plugins:
+  - "ashare_data" # ashre数据插件
+  - "warehouse_storage" #  仓库存储插件
+ashare_data:
+
+warehouse_storage:
+  db_path: "data/warehouse.db" # 数据库存储路径

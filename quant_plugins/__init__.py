@@ -32,7 +32,6 @@ from .strategy_plugins import (
 # 导出回测插件
 from .backtest_plugins import (
     DailyBacktestEnginePlugin,
-    PerformanceEvaluatorPlugin
 )
 
 # 导出执行插件
@@ -41,11 +40,6 @@ from .execution_plugins import (
     RealtimeMonitorPlugin
 )
 
-# 导出工具插件
-from .tools import (
-    PerformanceEvaluatorPlugin,
-    IPerformanceTools
-)
 
 __all__ = [
     # 数据插件
@@ -67,65 +61,6 @@ __all__ = [
     
     # 执行插件
     'SimTraderPlugin',
-    'RealtimeMonitorPlugin',
-    
-    # 工具插件
-    'PerformanceEvaluatorPlugin',
-    'IPerformanceTools'
+    'RealtimeMonitorPlugin'
 ]
 
-# 便捷函数
-def get_available_plugins() -> Dict[str, List[str]]:
-    """获取所有可用的插件列表
-    
-    Returns:
-        按类型分类的插件名称字典
-    """
-    return {
-        'data_plugins': [
-            'tushare_data',
-            'ashare_data',
-            'data_preprocessing',
-            'warehouse_storage'
-        ],
-        'strategy_plugins': [
-            'daily_kline_scoring',
-            'multi_factor_model'
-        ],
-        'backtest_plugins': [
-            'daily_backtest_engine',
-            'performance_evaluator'
-        ],
-        'execution_plugins': [
-            'sim_trader',
-            'realtime_monitor'
-        ],
-        'tools': [
-            # 性能工具已移动到 evaluator_plugins 目录
-        ]
-    }
-
-def get_plugin_class(plugin_name: str) -> Optional[Type]:
-    """根据插件名称获取插件类
-    
-    Args:
-        plugin_name: 插件名称
-        
-    Returns:
-        插件类或None
-    """
-    plugin_map = {
-        'tushare_data': TushareDataPlugin,
-        'ashare_data': AshareDataPlugin,
-        'data_preprocessing': DataPreprocessingPlugin,
-        'warehouse_storage': WarehouseStoragePlugin,
-        'daily_kline_scoring': DailyKlineScoringPlugin,
-        'multi_factor_model': MultiFactorModelPlugin,
-        'daily_backtest_engine': DailyBacktestEnginePlugin,
-        'performance_evaluator': PerformanceEvaluatorPlugin,
-        'sim_trader': SimTraderPlugin,
-        'realtime_monitor': RealtimeMonitorPlugin,
-        # 'performance_tools': PerformanceEvaluatorPlugin  # 已移动到 evaluator_plugins
-    }
-    
-    return plugin_map.get(plugin_name)

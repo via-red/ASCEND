@@ -20,7 +20,7 @@ import logging
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import IMonitor
+from ascend.core import IMonitor
 
 # 插件配置模型
 class RealtimeMonitorPluginConfig(BaseModel):

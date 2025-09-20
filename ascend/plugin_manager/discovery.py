@@ -132,10 +132,15 @@ class PluginDiscovery:
             if not plugin_path.exists():
                 continue
                 
-            # 扫描路径下的所有Python文件，排除插件管理器自身的文件
-            for file_path in plugin_path.glob("*.py"):
+            # 递归扫描路径下的所有Python文件，包括子文件夹
+            for file_path in plugin_path.rglob("*.py"):
+                # 排除插件管理器自身的文件
                 if (file_path.name.startswith("_") or
                     file_path.name in ['base.py', 'discovery.py', 'manager.py', 'types.py', 'env_utils.py']):
+                    continue
+                    
+                # 排除 __pycache__ 目录
+                if "__pycache__" in file_path.parts:
                     continue
                     
                 try:

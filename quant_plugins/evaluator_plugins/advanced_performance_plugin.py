@@ -9,7 +9,7 @@ import pandas as pd
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from .core_performance_evaluator import CorePerformanceEvaluator
+from quant_plugins.evaluator_plugins.core_performance_evaluator import CorePerformanceEvaluator
 
 
 class AdvancedPerformanceEvaluatorConfig(BaseModel):

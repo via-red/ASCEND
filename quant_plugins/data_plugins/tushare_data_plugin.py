@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 
 from ascend.plugin_manager.base import BasePlugin
 from ascend.core.exceptions import PluginError
-from . import IDataSourcePlugin
+from quant_plugins.data_plugins import IDataSourcePlugin
 
 # 插件配置模型
 class TushareDataPluginConfig(BaseModel):
